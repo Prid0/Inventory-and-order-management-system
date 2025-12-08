@@ -18,15 +18,18 @@ namespace Pim.Service
             _loggedInUserId = loggedInUserId;
         }
 
-        public async Task<List<ProductResponse>> GetAllProducts()
+        public async Task<PagedResult<ProductResponse>> GetAllProducts(int from, int to)
         {
-            var data = await _uow.ProductRepository.GetAll();
-            var products = data.Where(u => u.IsActive).Select(x => new ProductResponse
-            { Id = x.Id, Name = x.Name, Price = x.Price, Discription = x.Discription }
-           ).ToList();
-            if (products != null)
+            var totalRecord = 0;
+            var fromParameter = DataProvider.GetIntSqlParameter("From", from);
+            var toParameter = DataProvider.GetIntSqlParameter("To", to);
+            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
+
+            var response = await _executeSp.ExecuteStoredProcedureListAsync<ProductResponse>("GetAllProducts", fromParameter, toParameter, totalRecordParameter);
+            if (response != null)
             {
-                return products;
+                totalRecord = Convert.ToInt32(totalRecordParameter.Value);
+                return new PagedResult<ProductResponse>(response, totalRecord);
             }
             return null;
         }

@@ -21,8 +21,8 @@ namespace Pim.Utility.SqlHelper
         {
             var results = new List<TResult>();
 
-            using var connection = _dbContext.Database.GetDbConnection();
-            using var command = connection.CreateCommand();
+            await using var connection = _dbContext.Database.GetDbConnection();
+            await using var command = connection.CreateCommand();
 
             command.CommandText = storedProcedure;
             command.CommandType = CommandType.StoredProcedure;
@@ -33,7 +33,7 @@ namespace Pim.Utility.SqlHelper
             if (connection.State != ConnectionState.Open)
                 await connection.OpenAsync();
 
-            using var reader = await command.ExecuteReaderAsync();
+            await using var reader = await command.ExecuteReaderAsync();
 
             var properties = typeof(TResult).GetProperties();
 
@@ -52,6 +52,10 @@ namespace Pim.Utility.SqlHelper
 
                 results.Add(item);
             }
+
+            await reader.CloseAsync();
+
+            await command.DisposeAsync();
 
             return results;
         }

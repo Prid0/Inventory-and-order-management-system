@@ -25,9 +25,9 @@ namespace Product_And_Inventory_Mangement.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllProducts()
+        public async Task<IActionResult> GetAllProducts(int from, int to)
         {
-            var products = await _productService.GetAllProducts();
+            var products = await _productService.GetAllProducts(from, to);
             return Ok(products);
         }
 

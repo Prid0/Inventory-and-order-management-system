@@ -26,9 +26,9 @@ namespace Product_And_Inventory_Mangement.Controllers
 
         [Authorize(Roles = "1,2")]
         [HttpGet]
-        public async Task<IActionResult> GetAllOdres()
+        public async Task<IActionResult> GetAllOrders(int from, int to, int userId)
         {
-            var orders = await _orderService.GetAllOrders();
+            var orders = await _orderService.GetAllOrders(from, to, userId);
             return Ok(orders);
         }
 

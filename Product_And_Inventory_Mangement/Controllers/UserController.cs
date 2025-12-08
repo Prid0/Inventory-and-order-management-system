@@ -25,9 +25,9 @@ namespace Product_And_Inventory_Mangement.Controllers
 
         [Authorize(Roles = "1,2")]
         [HttpGet]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers(int from, int to)
         {
-            var users = await _userService.GetAllUsers();
+            var users = await _userService.GetAllUsers(from, to);
             return Ok(users);
         }
 

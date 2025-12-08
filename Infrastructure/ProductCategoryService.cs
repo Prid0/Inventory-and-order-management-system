@@ -2,6 +2,7 @@
 using Pim.Data.Models;
 using Pim.Model.Dtos;
 using Pim.Utility;
+using Pim.Utility.SqlHelper;
 
 namespace Pim.Service
 {
@@ -9,29 +10,44 @@ namespace Pim.Service
     {
         private readonly IUnitOfWork _uow;
         private readonly LoggedInUserId _loggedInUserId;
-        public ProductCategoryService(IUnitOfWork uow, LoggedInUserId loggedInUserId)
+        private readonly ExecuteSp _executeSp;
+        public ProductCategoryService(IUnitOfWork uow, LoggedInUserId loggedInUserId, ExecuteSp executeSp)
         {
             _uow = uow;
             _loggedInUserId = loggedInUserId;
+            _executeSp = executeSp;
         }
 
-        public async Task<IEnumerable<ProductCategory>> GetAllCategory()
+        public async Task<PagedResult<CategoryResponse>> GetAllCategory()
         {
             var data = await _uow.CategoryRepository.GetAll();
-            var categories = data.Where(u => u.IsActive).ToList();
-            if (categories != null)
+            var response = data.Where(u => u.IsActive).Select(x => new CategoryResponse { Id = x.Id, Type = x.Type }).ToList();
+            var totalRecord = 0;
+            if (response != null)
             {
-                return categories;
+                totalRecord = response.Count();
+                return new PagedResult<CategoryResponse>(response, totalRecord);
             }
             return null;
         }
 
-        public async Task<ProductCategory> GetCategoryById(int id)
+        public async Task<CategoryDetailResponse> GetCategoryById(int id)
         {
-            var categories = await _uow.CategoryRepository.GetById(id);
-            if (categories != null && categories.IsActive)
+            var idParameter = DataProvider.GetIntSqlParameter("Id", id);
+            var resultSet = await _executeSp.ExecuteStoredProcedureListAsync<CategoryDetailResultSet>("GetCategoryById", idParameter);
+            if (resultSet != null)
             {
-                return categories;
+                var reponse = resultSet.Select(x => new CategoryDetailResponse
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    CreatedDate = x.CreatedDate.ToString("ddd-MM-yyyy"),
+                    ModifiedDate = x.ModifiedDate.ToString("ddd-MM-yyyy"),
+                    CreatedBy = x.CreatedBy,
+                    ModifiedBy = x.ModifiedBy
+
+                }).FirstOrDefault();
+                return reponse;
             }
             return null;
         }

@@ -2,6 +2,7 @@
 using Pim.Data.Models;
 using Pim.Model.Dtos;
 using Pim.Utility;
+using Pim.Utility.SqlHelper;
 
 namespace Pim.Service
 {
@@ -9,25 +10,41 @@ namespace Pim.Service
     {
         private readonly IUnitOfWork _uow;
         private readonly LoggedInUserId _loggedInUserId;
-        public RoleService(IUnitOfWork uow, LoggedInUserId loggedInUserId)
+        private readonly ExecuteSp _executeSp;
+        public RoleService(IUnitOfWork uow, LoggedInUserId loggedInUserId, ExecuteSp executeSp)
         {
             _uow = uow;
             _loggedInUserId = loggedInUserId;
+            _executeSp = executeSp;
         }
 
-        public async Task<Roles> GetRolesById(int id)
-        {
-            var data = await _uow.RoleRepository.GetById(id);
-            if (data != null && data.IsActive)
-            {
-                return data;
-            }
-            return null;
-        }
-        public async Task<IEnumerable<RoleResponse>> GetAllRoles()
+        public async Task<PagedResult<RoleResponse>> GetAllRoles()
         {
             var data = await _uow.RoleRepository.GetAll();
-            return data.Where(r => r.IsActive).Select(x => new RoleResponse { Id = x.Id, RoleType = x.RoleType }).ToList();
+            var response = data.Where(r => r.IsActive).Select(x => new RoleResponse { Id = x.Id, RoleType = x.RoleType }).ToList();
+            var totalRecord = 0;
+            totalRecord = response.Count();
+
+            return new PagedResult<RoleResponse>(response, totalRecord);
+        }
+        public async Task<RoleDetailResponse> GetRolesById(int id)
+        {
+            var roleIdParameter = DataProvider.GetIntSqlParameter("RoleId", id);
+            var data = await _executeSp.ExecuteStoredProcedureListAsync<RoleDetailResultSet>("GetRoleDetailsById", roleIdParameter);
+            if (data != null)
+            {
+                var result = data.Select(x => new RoleDetailResponse
+                {
+                    Id = x.Id,
+                    RoleType = x.RoleType,
+                    CreatedDate = x.CreatedDate.ToString("dd-MM-yyyy"),
+                    ModifiedDate = x.ModifiedDate.ToString("dd-MM-yyyy"),
+                    CreatedBy = x.CreatedBy,
+                    ModifiedBy = x.ModifiedBy
+                }).FirstOrDefault();
+                return result;
+            }
+            return null;
         }
 
         public async Task<string> AddOrUpdateRole(RoleRequest role)

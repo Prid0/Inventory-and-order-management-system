@@ -2,6 +2,7 @@
 using Pim.Data.Models;
 using Pim.Model.Dtos;
 using Pim.Utility;
+using Pim.Utility.SqlHelper;
 
 namespace Pim.Service
 {
@@ -9,36 +10,54 @@ namespace Pim.Service
     {
         private readonly IUnitOfWork _uow;
         private readonly LoggedInUserId _loggedInUserId;
-        public UserService(IUnitOfWork uow, LoggedInUserId loggedInUserId)
+        private readonly ExecuteSp _executeSp;
+        public UserService(IUnitOfWork uow, LoggedInUserId loggedInUserId, ExecuteSp executeSp)
         {
             _uow = uow;
             _loggedInUserId = loggedInUserId;
+            _executeSp = executeSp;
         }
 
-        public async Task<IEnumerable<UserResponse>> GetAllUsers()
+        public async Task<PagedResult<UserResponse>> GetAllUsers(int from, int to)
         {
-            var data = await _uow.UserRepository.GetAll();
-            var activeUsers = data.Where(u => u.IsActive).ToList();
-            if (activeUsers != null)
+            var totalRecord = 0;
+            var fromParameter = DataProvider.GetIntSqlParameter("From", from);
+            var toParameter = DataProvider.GetIntSqlParameter("To", to);
+            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", 0);
+            var result = await _executeSp.ExecuteStoredProcedureListAsync<UserResponse>(
+               "GetAllUsers",
+               fromParameter,
+               toParameter,
+               totalRecordParameter
+           );
+            if (result != null)
             {
-                var response = activeUsers.Select(x => new UserResponse
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Email = x.Email,
-                    PhoneNumber = x.PhoneNumber
-                });
-                return response;
+                totalRecord = Convert.ToInt32(totalRecordParameter.Value);
+
+                return new PagedResult<UserResponse>(result, totalRecord);
             }
             return null;
         }
 
-        public async Task<Users> GetUsersById(int id)
+        public async Task<UserDetailResponse> GetUsersById(int id)
         {
-            var user = await _uow.UserRepository.GetById(id);
-            if (user != null && user.IsActive)
+            var idParameter = DataProvider.GetIntSqlParameter("Id", id);
+            var resultSet = await _executeSp.ExecuteStoredProcedureListAsync<UserDetailResultSet>("GetUserDetail", idParameter);
+            if (resultSet != null)
             {
-                return user;
+                var response = resultSet.Select(x => new UserDetailResponse
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Email = x.Email,
+                    PhoneNumber = x.PhoneNumber,
+                    CreatedDate = x.CreatedDate.ToString("ddd-MM-yyyy"),
+                    ModifiedDate = x.ModifiedDate.ToString("ddd-MM-yyyy"),
+                    CreatedBy = x.CreatedBy,
+                    ModifiedBy = x.ModifiedBy
+
+                }).FirstOrDefault();
+                return response;
             }
             return null;
         }

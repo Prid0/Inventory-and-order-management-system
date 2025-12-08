@@ -19,10 +19,19 @@ namespace Pim.Service
             _loggedInUserId = loggedInUserId;
         }
 
-        public async Task<List<OrdersResponse>> GetAllOrders()
+        public async Task<PagedResult<OrdersResponse>> GetAllOrders(int from, int to, int userId)
         {
+            var totalRecord = 0;
+            var fromParameter = DataProvider.GetIntSqlParameter("From", from);
+            var toParameter = DataProvider.GetIntSqlParameter("To", to);
+            var userIdParameter = DataProvider.GetIntSqlParameter("UserId", userId);
+            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
             var result = await _executeSp.ExecuteStoredProcedureListAsync<OrdersResutSet>(
-               "GetAllOrders"
+               "GetAllOrders",
+               fromParameter,
+               toParameter,
+               userIdParameter,
+               totalRecordParameter
 
            );
             var orders = result.Select(x => new OrdersResponse
@@ -34,8 +43,12 @@ namespace Pim.Service
                 PlacedOn = x.PlacedOn.ToString("dd-MM-yyyy"),
                 CancledOn = x.CancledOn.HasValue ? x.CancledOn.Value.ToString("dd-MM-yyyy") : ""
             }).ToList();
-            return orders;
+
+            totalRecord = Convert.ToInt32(totalRecordParameter.Value);
+
+            return new PagedResult<OrdersResponse>(orders, totalRecord);
         }
+
 
         public async Task<OrderDetailsResponse> GetOrderDetails(int orderId)
         {

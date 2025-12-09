@@ -37,7 +37,7 @@ namespace Pim.Service
             var resultSet = await _executeSp.ExecuteStoredProcedureListAsync<CategoryDetailResultSet>("GetCategoryById", idParameter);
             if (resultSet != null)
             {
-                var reponse = resultSet.Select(x => new CategoryDetailResponse
+                var response = resultSet.Select(x => new CategoryDetailResponse
                 {
                     Id = x.Id,
                     Name = x.Name,
@@ -47,7 +47,7 @@ namespace Pim.Service
                     ModifiedBy = x.ModifiedBy
 
                 }).FirstOrDefault();
-                return reponse;
+                return response;
             }
             return null;
         }

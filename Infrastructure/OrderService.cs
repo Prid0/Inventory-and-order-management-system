@@ -143,7 +143,7 @@ namespace Pim.Service
                     var product = activeProducts.FirstOrDefault(p => p.Id == item.ProductId);
 
                     if (product == null || item.Quantity > product.Quantity)
-                        return $"Invalid product: {item.ProductId} or out of stock";
+                        return $"The product '{product.Name}' is currently unavailable or out of stock.";
 
                     var orderItem = new OrderItem
                     {

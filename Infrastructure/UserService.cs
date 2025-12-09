@@ -23,7 +23,7 @@ namespace Pim.Service
             var totalRecord = 0;
             var fromParameter = DataProvider.GetIntSqlParameter("From", from);
             var toParameter = DataProvider.GetIntSqlParameter("To", to);
-            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", 0);
+            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
             var result = await _executeSp.ExecuteStoredProcedureListAsync<UserResponse>(
                "GetAllUsers",
                fromParameter,
@@ -80,57 +80,56 @@ namespace Pim.Service
                     return result;
                 }
 
-                if (loginData.roleId == ur.RoleId)
 
-                    if (ExistingUser != null && ExistingUser.IsActive && existingUserRole.IsActive)
+                if (ExistingUser != null && ExistingUser.IsActive && existingUserRole.IsActive)
+                {
+                    ExistingUser.Name = ur.Name;
+                    ExistingUser.Email = ur.Email;
+                    ExistingUser.PhoneNumber = ur.PhoneNumber;
+                    ExistingUser.Password = BCrypt.Net.BCrypt.HashPassword(ur.Password);
+
+                    ExistingUser.ModifiedDate = DateTime.UtcNow;
+                    ExistingUser.ModifiedBy = loginData.userId;
+                    await _uow.UserRepository.Update(ExistingUser);
+
+                    existingUserRole.RoleId = ur.RoleId;
+                    existingUserRole.ModifiedDate = DateTime.UtcNow;
+                    existingUserRole.ModifiedBy = loginData.userId;
+
+                    await _uow.UserRepository.UpdateRoleMapping(existingUserRole);
+                }
+                else
+                {
+                    var user = new Users
                     {
-                        ExistingUser.Name = ur.Name;
-                        ExistingUser.Email = ur.Email;
-                        ExistingUser.PhoneNumber = ur.PhoneNumber;
-                        ExistingUser.Password = BCrypt.Net.BCrypt.HashPassword(ur.Password);
+                        Name = ur.Name,
+                        Email = ur.Email,
+                        PhoneNumber = ur.PhoneNumber,
+                        Password = BCrypt.Net.BCrypt.HashPassword(ur.Password),
 
-                        ExistingUser.ModifiedDate = DateTime.UtcNow;
-                        ExistingUser.ModifiedBy = loginData.userId;
-                        await _uow.UserRepository.Update(ExistingUser);
+                        CreatedDate = DateTime.UtcNow,
+                        CreatedBy = loginData.userId,
+                        ModifiedDate = DateTime.UtcNow,
+                        ModifiedBy = loginData.userId,
+                        IsActive = true
+                    };
 
-                        existingUserRole.RoleId = ur.RoleId;
-                        existingUserRole.ModifiedDate = DateTime.UtcNow;
-                        existingUserRole.ModifiedBy = loginData.userId;
+                    await _uow.UserRepository.Add(user);
+                    await _uow.Commit();
 
-                        await _uow.UserRepository.UpdateRoleMapping(existingUserRole);
-                    }
-                    else
+                    var mapping = new UserRoleMapping
                     {
-                        var user = new Users
-                        {
-                            Name = ur.Name,
-                            Email = ur.Email,
-                            PhoneNumber = ur.PhoneNumber,
-                            Password = BCrypt.Net.BCrypt.HashPassword(ur.Password),
+                        UserId = user.Id,
+                        RoleId = ur.RoleId,
+                        CreatedDate = DateTime.UtcNow,
+                        ModifiedDate = DateTime.UtcNow,
+                        CreatedBy = loginData.userId,
+                        ModifiedBy = loginData.userId,
+                        IsActive = true
+                    };
 
-                            CreatedDate = DateTime.UtcNow,
-                            CreatedBy = loginData.userId,
-                            ModifiedDate = DateTime.UtcNow,
-                            ModifiedBy = loginData.userId,
-                            IsActive = true
-                        };
-
-                        await _uow.UserRepository.Add(user);
-                        await _uow.Commit();
-
-                        var mapping = new UserRoleMapping
-                        {
-                            UserId = user.Id,
-                            RoleId = ur.RoleId,
-                            CreatedDate = DateTime.UtcNow,
-                            ModifiedDate = DateTime.UtcNow,
-                            CreatedBy = loginData.userId,
-                            ModifiedBy = loginData.userId,
-                            IsActive = true
-                        };
-
-                        await _uow.UserRepository.AddRoleMapping(mapping);
-                    }
+                    await _uow.UserRepository.AddRoleMapping(mapping);
+                }
 
                 result = "success";
                 await _uow.Commit();

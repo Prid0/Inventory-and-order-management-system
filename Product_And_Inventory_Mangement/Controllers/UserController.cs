@@ -43,7 +43,7 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(user);
         }
 
-        [Authorize(Roles = "3")]
+        [Authorize(Roles = "1,3")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
@@ -51,7 +51,7 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(result);
         }
 
-        [Authorize(Roles = "3")]
+        [Authorize(Roles = "1,3")]
         [HttpPost("ResetPassword")]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
         {

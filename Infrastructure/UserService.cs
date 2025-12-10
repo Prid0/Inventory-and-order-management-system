@@ -11,55 +11,71 @@ namespace Pim.Service
         private readonly IUnitOfWork _uow;
         private readonly LoggedInUserId _loggedInUserId;
         private readonly ExecuteSp _executeSp;
-        public UserService(IUnitOfWork uow, LoggedInUserId loggedInUserId, ExecuteSp executeSp)
+        private readonly CacheService _cacheService;
+        public UserService(IUnitOfWork uow, LoggedInUserId loggedInUserId, ExecuteSp executeSp, CacheService cacheService)
         {
             _uow = uow;
             _loggedInUserId = loggedInUserId;
             _executeSp = executeSp;
+            _cacheService = cacheService;
         }
 
         public async Task<PagedResult<UserResponse>> GetAllUsers(int from, int to)
         {
-            var totalRecord = 0;
-            var fromParameter = DataProvider.GetIntSqlParameter("From", from);
-            var toParameter = DataProvider.GetIntSqlParameter("To", to);
-            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
-            var result = await _executeSp.ExecuteStoredProcedureListAsync<UserResponse>(
-               "GetAllUsers",
-               fromParameter,
-               toParameter,
-               totalRecordParameter
-           );
-            if (result != null)
-            {
-                totalRecord = Convert.ToInt32(totalRecordParameter.Value);
+            string cacheKey = $"users_{from}_{to}";
 
-                return new PagedResult<UserResponse>(result, totalRecord);
-            }
-            return null;
+            return await _cacheService.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var totalRecord = 0;
+
+                    var fromParameter = DataProvider.GetIntSqlParameter("From", from);
+                    var toParameter = DataProvider.GetIntSqlParameter("To", to);
+                    var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
+
+                    var result = await _executeSp.ExecuteStoredProcedureListAsync<UserResponse>(
+                        "GetAllUsers",
+                        fromParameter,
+                        toParameter,
+                        totalRecordParameter
+                    );
+                    totalRecord = Convert.ToInt32(totalRecordParameter.Value);
+                    return new PagedResult<UserResponse>(result, totalRecord);
+                },
+                expiration: TimeSpan.FromMinutes(10)
+            );
         }
 
         public async Task<UserDetailResponse> GetUsersById(int id)
         {
-            var idParameter = DataProvider.GetIntSqlParameter("Id", id);
-            var resultSet = await _executeSp.ExecuteStoredProcedureListAsync<UserDetailResultSet>("GetUserDetail", idParameter);
-            if (resultSet != null)
-            {
-                var response = resultSet.Select(x => new UserDetailResponse
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Email = x.Email,
-                    PhoneNumber = x.PhoneNumber,
-                    CreatedDate = x.CreatedDate.ToString("ddd-MM-yyyy"),
-                    ModifiedDate = x.ModifiedDate.ToString("ddd-MM-yyyy"),
-                    CreatedBy = x.CreatedBy,
-                    ModifiedBy = x.ModifiedBy
+            string cacheKey = $"users_{id}";
 
-                }).FirstOrDefault();
-                return response;
-            }
-            return null;
+            return await _cacheService.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+
+                    var idParameter = DataProvider.GetIntSqlParameter("Id", id);
+                    var resultSet = await _executeSp.ExecuteStoredProcedureListAsync<UserDetailResultSet>("GetUserDetail", idParameter);
+                    if (resultSet != null)
+                    {
+                        var response = resultSet.Select(x => new UserDetailResponse
+                        {
+                            Id = x.Id,
+                            Name = x.Name,
+                            Email = x.Email,
+                            PhoneNumber = x.PhoneNumber,
+                            CreatedDate = x.CreatedDate.ToString("ddd-MM-yyyy"),
+                            ModifiedDate = x.ModifiedDate.ToString("ddd-MM-yyyy"),
+                            CreatedBy = x.CreatedBy,
+                            ModifiedBy = x.ModifiedBy
+
+                        }).FirstOrDefault();
+                        return response;
+                    }
+                    return null;
+                });
         }
 
         public async Task<string> AddOrUpdateUser(UserRequest ur)
@@ -131,9 +147,10 @@ namespace Pim.Service
                     await _uow.UserRepository.AddRoleMapping(mapping);
                 }
 
-                result = "success";
                 await _uow.Commit();
                 await transaction.CommitAsync();
+                _cacheService.Remove($"users_{ur.Id}");
+                result = "success";
             }
             catch (Exception ex)
             {
@@ -147,6 +164,7 @@ namespace Pim.Service
 
         public async Task<string> DeleteUser(int id)
         {
+            var result = "User not found or already inactive";
             using var transaction = await _uow.BeginTransactionAsync();
             try
             {
@@ -155,7 +173,7 @@ namespace Pim.Service
                 var loginData = _loggedInUserId.GetUserAndRole();
                 if ((user == null || !user.IsActive) && !existingUserRole.IsActive)
                 {
-                    return "User not found or already inactive";
+                    return result;
                 }
 
                 user.IsActive = false;
@@ -169,6 +187,8 @@ namespace Pim.Service
                 await _uow.UserRepository.Update(user);
                 await _uow.Commit();
                 await transaction.CommitAsync();
+                _cacheService.Remove($"users_{id}");
+                result = "success";
 
             }
             catch (Exception ex)
@@ -176,12 +196,13 @@ namespace Pim.Service
                 await transaction.RollbackAsync();
                 return ex.Message;
             }
-            return "success";
+            return result;
         }
 
         public async Task<string> ResetPassword(ResetPasswordRequest request)
         {
             var result = "Invalid email or phone number";
+
             try
             {
                 var ExistingUser = await _uow.UserRepository.GetUserByEmailAndPhone(request.Email, request.PhoneNumber);
@@ -200,7 +221,7 @@ namespace Pim.Service
 
                     await _uow.UserRepository.Update(ExistingUser);
                     await _uow.Commit();
-
+                    _cacheService.Remove($"users_{ExistingUser.Id}");
                     result = "Password reset successful";
                 }
             }

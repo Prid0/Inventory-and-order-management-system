@@ -4,36 +4,39 @@ using Pim.Utility;
 using System.Diagnostics;
 using System.Security.Claims;
 
-
-namespace Pim.Api.Middleware
+public class ErrorLoggingMiddleware
 {
-    public class ErrorLoggingMiddleware
+    private readonly RequestDelegate _next;
+
+    public ErrorLoggingMiddleware(RequestDelegate next)
     {
-        private readonly RequestDelegate _next;
-        private readonly LoggedInUserId _loggedInUserId;
-        public ErrorLoggingMiddleware(RequestDelegate next)
+        _next = next;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+
+        try
         {
-            _next = next;
+            await _next(context);
         }
-
-        public async Task InvokeAsync(HttpContext context, ErrorLogsService errorLogsService, LoggedInUserId loggedInUserId)
+        catch (Exception ex)
         {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
+            stopwatch.Stop();
 
-            try
+            // Create a new scope for logging
+            using (var scope = context.RequestServices.CreateScope())
             {
-                await _next(context);
-            }
-            catch (Exception ex)
-            {
-                var loggedInData = _loggedInUserId.GetUserAndRole();
-                stopwatch.Stop();
+                var errorLogsService = scope.ServiceProvider.GetRequiredService<ErrorLogsService>();
+                var loggedInUserId = scope.ServiceProvider.GetRequiredService<LoggedInUserId>();
 
-                if (context.User.Identity!.IsAuthenticated)
+                var loggedInData = loggedInUserId.GetUserAndRole();
+
+                if (context.User.Identity?.IsAuthenticated == true)
                 {
                     var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
                     if (!string.IsNullOrEmpty(userIdClaim))
                         loggedInData.userId = int.Parse(userIdClaim);
                 }
@@ -51,6 +54,7 @@ namespace Pim.Api.Middleware
                 await errorLogsService.AddAsync(log);
             }
 
+            // Exception swallowed; request continues
         }
     }
 }

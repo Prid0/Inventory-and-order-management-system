@@ -11,49 +11,68 @@ namespace Pim.Service
         private readonly IUnitOfWork _uow;
         private readonly ExecuteSp _executeSp;
         private readonly LoggedInUserId _loggedInUserId;
-        public ProductService(IUnitOfWork uow, ExecuteSp executeSp, LoggedInUserId loggedInUserId)
+        private readonly CacheService _cacheService;
+
+        public ProductService(IUnitOfWork uow, ExecuteSp executeSp, LoggedInUserId loggedInUserId, CacheService cacheService)
         {
             _uow = uow;
             _executeSp = executeSp;
             _loggedInUserId = loggedInUserId;
+            _cacheService = cacheService;
         }
 
         public async Task<PagedResult<ProductResponse>> GetAllProducts(int from, int to)
         {
-            var totalRecord = 0;
-            var fromParameter = DataProvider.GetIntSqlParameter("From", from);
-            var toParameter = DataProvider.GetIntSqlParameter("To", to);
-            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
+            string cacheKey = $"product_{from}_{to}";
 
-            var response = await _executeSp.ExecuteStoredProcedureListAsync<ProductResponse>("GetAllProducts", fromParameter, toParameter, totalRecordParameter);
-            if (response != null)
-            {
-                totalRecord = Convert.ToInt32(totalRecordParameter.Value);
-                return new PagedResult<ProductResponse>(response, totalRecord);
-            }
-            return null;
+            return await _cacheService.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var totalRecord = 0;
+                    var fromParameter = DataProvider.GetIntSqlParameter("From", from);
+                    var toParameter = DataProvider.GetIntSqlParameter("To", to);
+                    var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
+
+                    var response = await _executeSp.ExecuteStoredProcedureListAsync<ProductResponse>("GetAllProducts", fromParameter, toParameter, totalRecordParameter);
+
+                    totalRecord = Convert.ToInt32(totalRecordParameter.Value);
+                    return new PagedResult<ProductResponse>(response, totalRecord);
+
+                });
         }
 
         public async Task<ProductDetailResponse> GetProductById(int id)
         {
-            var productIdParameter = DataProvider.GetIntSqlParameter("ProductId", id);
-            var product = await _executeSp.ExecuteStoredProcedureListAsync<ProductDetailResultSet>(
-                "GetProductDetails", productIdParameter);
-            var response = product.Select(x => new ProductDetailResponse
-            {
-                ProductId = x.ProductId,
-                ProductName = x.ProductName,
-                Price = x.Price,
-                Quantity = x.Quantity,
-                Discription = x.Discription ?? "",
-                Category = x.Category,
-                CreatedDate = x.CreatedDate.ToString("dd-MM-yyyy"),
-                CreatedBy = x.CreatedBy,
-                ModifiedDate = x.ModifiedDate.HasValue ? x.ModifiedDate.Value.ToString("dd-MM-yyyy") : "",
-                ModifiedBy = x.ModifiedBy
-            }
-            ).FirstOrDefault();
-            return response;
+            string cacheKey = $"users_{id}";
+
+            return await _cacheService.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var productIdParameter = DataProvider.GetIntSqlParameter("ProductId", id);
+                    var product = await _executeSp.ExecuteStoredProcedureListAsync<ProductDetailResultSet>(
+                        "GetProductDetails", productIdParameter);
+                    if (product != null)
+                    {
+                        var response = product.Select(x => new ProductDetailResponse
+                        {
+                            ProductId = x.ProductId,
+                            ProductName = x.ProductName,
+                            Price = x.Price,
+                            Quantity = x.Quantity,
+                            Discription = x.Discription ?? "",
+                            Category = x.Category,
+                            CreatedDate = x.CreatedDate.ToString("dd-MM-yyyy"),
+                            CreatedBy = x.CreatedBy,
+                            ModifiedDate = x.ModifiedDate.HasValue ? x.ModifiedDate.Value.ToString("dd-MM-yyyy") : "",
+                            ModifiedBy = x.ModifiedBy
+                        }
+                        ).FirstOrDefault();
+                        return response;
+                    }
+                    return null;
+                });
         }
 
         public async Task<string> AddOrUpdateProduct(ProductRequest ur)
@@ -99,8 +118,12 @@ namespace Pim.Service
                     };
                     await _uow.ProductRepository.Add(product);
                 }
-                result = "success";
+
                 await _uow.Commit();
+
+                _cacheService.Remove($"products_{ur.ProductId}");
+
+                result = "success";
             }
             catch (Exception ex)
             {
@@ -111,6 +134,7 @@ namespace Pim.Service
 
         public async Task<string> DeleteProduct(int id)
         {
+            var result = "error";
             try
             {
                 var loginData = _loggedInUserId.GetUserAndRole();
@@ -127,13 +151,15 @@ namespace Pim.Service
                 await _uow.ProductRepository.Update(product);
                 await _uow.Commit();
 
+                _cacheService.Remove($"products_{id}");
+
+                result = "success";
             }
             catch (Exception ex)
             {
-                return ex.Message;
+                result = ex.Message;
             }
-            return "success";
+            return result;
         }
-
     }
 }

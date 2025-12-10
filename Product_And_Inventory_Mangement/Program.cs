@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Pim.Api.Middleware;
 using Pim.Data;
 using Pim.Data.Infrastructure;
 using Pim.Data.Repository.Category;
@@ -22,6 +21,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("dbcon"))
 );
+builder.Services.AddMemoryCache();
 
 builder.Services.AddSwaggerGen(c =>
 {
@@ -88,11 +88,13 @@ builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<ErrorLogsService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<LoggedInUserId>();
+builder.Services.AddScoped<CacheService>();
 builder.Services.AddHttpContextAccessor();
 
 // SQL Helpers
 builder.Services.AddScoped<ExecuteSp>();
 builder.Services.AddScoped<DataProvider>();
+
 
 var app = builder.Build();
 

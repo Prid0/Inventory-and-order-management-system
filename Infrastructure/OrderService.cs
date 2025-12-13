@@ -67,13 +67,6 @@ namespace Pim.Service
                 cacheKey,
                 async () =>
                 {
-                    var order = await _uow.OrderRepository.GetById(orderId);
-
-                    if (order == null || !order.IsActive)
-                    {
-                        return null;
-                    }
-
                     var orderIdParam = DataProvider.GetIntSqlParameter("OrderId", orderId);
 
                     var result = await _executeSp.ExecuteStoredProcedureListAsync<OrderDetailsResultSet>(

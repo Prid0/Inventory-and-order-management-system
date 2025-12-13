@@ -55,7 +55,6 @@ namespace Pim.Service
                 cacheKey,
                 async () =>
                 {
-
                     var idParameter = DataProvider.GetIntSqlParameter("Id", id);
                     var resultSet = await _executeSp.ExecuteStoredProcedureListAsync<UserDetailResultSet>("GetUserDetail", idParameter);
                     if (resultSet != null)

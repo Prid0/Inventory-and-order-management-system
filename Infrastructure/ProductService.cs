@@ -10,14 +10,12 @@ namespace Pim.Service
     {
         private readonly IUnitOfWork _uow;
         private readonly ExecuteSp _executeSp;
-        private readonly LoggedInUserId _loggedInUserId;
         private readonly CacheService _cacheService;
 
-        public ProductService(IUnitOfWork uow, ExecuteSp executeSp, LoggedInUserId loggedInUserId, CacheService cacheService)
+        public ProductService(IUnitOfWork uow, ExecuteSp executeSp, CacheService cacheService)
         {
             _uow = uow;
             _executeSp = executeSp;
-            _loggedInUserId = loggedInUserId;
             _cacheService = cacheService;
         }
 
@@ -42,7 +40,7 @@ namespace Pim.Service
                 });
         }
 
-        public async Task<ProductDetailResponse> GetProductById(int id)
+        public async Task<ProductDetailResultSet> GetProductById(int id)
         {
             string cacheKey = $"users_{id}";
 
@@ -51,36 +49,16 @@ namespace Pim.Service
                 async () =>
                 {
                     var productIdParameter = DataProvider.GetIntSqlParameter("ProductId", id);
-                    var product = await _executeSp.ExecuteStoredProcedureListAsync<ProductDetailResultSet>(
+                    return await _executeSp.ExecuteStoredProcedureAsync<ProductDetailResultSet>(
                         "GetProductDetails", productIdParameter);
-                    if (product != null)
-                    {
-                        var response = product.Select(x => new ProductDetailResponse
-                        {
-                            ProductId = x.ProductId,
-                            ProductName = x.ProductName,
-                            Price = x.Price,
-                            Quantity = x.Quantity,
-                            Discription = x.Discription ?? "",
-                            Category = x.Category,
-                            CreatedDate = x.CreatedDate.ToString("dd-MM-yyyy"),
-                            CreatedBy = x.CreatedBy,
-                            ModifiedDate = x.ModifiedDate.HasValue ? x.ModifiedDate.Value.ToString("dd-MM-yyyy") : "",
-                            ModifiedBy = x.ModifiedBy
-                        }
-                        ).FirstOrDefault();
-                        return response;
-                    }
-                    return null;
                 });
         }
 
-        public async Task<string> AddOrUpdateProduct(ProductRequest ur)
+        public async Task<string> AddOrUpdateProduct(int userId, ProductRequest ur)
         {
             var result = "error while adding or updating the user";
             try
             {
-                var loginData = _loggedInUserId.GetUserAndRole();
                 var isValidCategory = await _uow.CategoryRepository.isValidCategory(ur.CategoryId);
                 if (!isValidCategory)
                 {
@@ -97,7 +75,7 @@ namespace Pim.Service
                     existingProduct.Discription = ur.Discription;
                     existingProduct.Quantity = ur.Quantity;
                     existingProduct.ModifiedDate = DateTime.UtcNow;
-                    existingProduct.ModifiedBy = loginData.userId;
+                    existingProduct.ModifiedBy = userId;
 
                     await _uow.ProductRepository.Update(existingProduct);
                 }
@@ -112,8 +90,8 @@ namespace Pim.Service
                         Quantity = ur.Quantity,
                         CreatedDate = DateTime.UtcNow,
                         ModifiedDate = DateTime.UtcNow,
-                        CreatedBy = loginData.userId,
-                        ModifiedBy = loginData.userId,
+                        CreatedBy = userId,
+                        ModifiedBy = userId,
                         IsActive = true
                     };
                     await _uow.ProductRepository.Add(product);
@@ -132,12 +110,11 @@ namespace Pim.Service
             return result;
         }
 
-        public async Task<string> DeleteProduct(int id)
+        public async Task<string> DeleteProduct(int userId, int id)
         {
             var result = "error";
             try
             {
-                var loginData = _loggedInUserId.GetUserAndRole();
                 var product = await _uow.ProductRepository.GetById(id);
 
                 if (product == null || !product.IsActive)
@@ -146,7 +123,7 @@ namespace Pim.Service
                 }
 
                 product.ModifiedDate = DateTime.UtcNow;
-                product.ModifiedBy = loginData.userId;
+                product.ModifiedBy = userId;
                 product.IsActive = false;
                 await _uow.ProductRepository.Update(product);
                 await _uow.Commit();

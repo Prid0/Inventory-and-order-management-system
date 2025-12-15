@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Pim.Model.Dtos;
 using Pim.Service;
+using Pim.Utility;
 
 namespace Product_And_Inventory_Mangement.Controllers
 {
@@ -10,21 +11,24 @@ namespace Product_And_Inventory_Mangement.Controllers
     public class RolesController : ControllerBase
     {
         private readonly RoleService _roleService;
+        private readonly LoggedInUserId _loggedInUserId;
 
-        public RolesController(RoleService roleService)
+        public RolesController(RoleService roleService, LoggedInUserId loggedInUserId)
         {
             _roleService = roleService;
+            _loggedInUserId = loggedInUserId;
         }
 
-        [Authorize(Roles = "1")]
+        [Authorize(Roles = "Admin")]
         [HttpPost("AddOrUpdate")]
         public async Task<IActionResult> AddOrUpdateRole([FromBody] RoleRequest request)
         {
-            var result = await _roleService.AddOrUpdateRole(request);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _roleService.AddOrUpdateRole(userId, request);
             return Ok(result);
         }
 
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Admin,Manager")]
         [HttpGet]
         public async Task<IActionResult> GetAllRoles()
         {
@@ -32,7 +36,7 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(result);
         }
 
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Admin,Manager")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetRoleById(int id)
         {
@@ -44,11 +48,12 @@ namespace Product_And_Inventory_Mangement.Controllers
             return NotFound();
         }
 
-        [Authorize(Roles = "1")]
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRole(int id)
         {
-            var result = await _roleService.DeleteRole(id);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _roleService.DeleteRole(userId, id);
 
             if (result != null)
                 return Ok(result);

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Pim.Model.Dtos;
 using Pim.Service;
+using Pim.Utility;
 
 namespace Product_And_Inventory_Mangement.Controllers
 {
@@ -10,20 +11,23 @@ namespace Product_And_Inventory_Mangement.Controllers
     public class UsersController : ControllerBase
     {
         private readonly UserService _userService;
+        private readonly LoggedInUserId _loggedInUserId;
 
-        public UsersController(UserService userService)
+        public UsersController(UserService userService, LoggedInUserId loggedInUserId)
         {
             _userService = userService;
+            _loggedInUserId = loggedInUserId;
         }
 
         [HttpPost("AddOrUpdate")]
         public async Task<IActionResult> AddOrUpdateUser([FromBody] UserRequest request)
         {
-            var result = await _userService.AddOrUpdateUser(request);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _userService.AddOrUpdateUser(userId, request);
             return Ok(result);
         }
 
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Admin,Manager")]
         [HttpGet]
         public async Task<IActionResult> GetAllUsers(int from, int to)
         {
@@ -31,7 +35,7 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(users);
         }
 
-        [Authorize(Roles = "1,2,3")]
+        [Authorize(Roles = "Admin,Manager,Customer")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(int id)
         {
@@ -43,15 +47,16 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(user);
         }
 
-        [Authorize(Roles = "1,3")]
+        [Authorize(Roles = "Admin,Customer")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            var result = await _userService.DeleteUser(id);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _userService.DeleteUser(userId, id);
             return Ok(result);
         }
 
-        [Authorize(Roles = "1,3")]
+        [Authorize(Roles = "Admin,Customer")]
         [HttpPost("ResetPassword")]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
         {

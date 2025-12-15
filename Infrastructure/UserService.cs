@@ -9,13 +9,11 @@ namespace Pim.Service
     public class UserService
     {
         private readonly IUnitOfWork _uow;
-        private readonly LoggedInUserId _loggedInUserId;
         private readonly ExecuteSp _executeSp;
         private readonly CacheService _cacheService;
-        public UserService(IUnitOfWork uow, LoggedInUserId loggedInUserId, ExecuteSp executeSp, CacheService cacheService)
+        public UserService(IUnitOfWork uow, ExecuteSp executeSp, CacheService cacheService)
         {
             _uow = uow;
-            _loggedInUserId = loggedInUserId;
             _executeSp = executeSp;
             _cacheService = cacheService;
         }
@@ -43,11 +41,11 @@ namespace Pim.Service
                     totalRecord = Convert.ToInt32(totalRecordParameter.Value);
                     return new PagedResult<UserResponse>(result, totalRecord);
                 },
-                expiration: TimeSpan.FromMinutes(10)
+                expiration: TimeSpan.FromMinutes(5)
             );
         }
 
-        public async Task<UserDetailResponse> GetUsersById(int id)
+        public async Task<UserDetailResultSet> GetUsersById(int id)
         {
             string cacheKey = $"users_{id}";
 
@@ -56,44 +54,34 @@ namespace Pim.Service
                 async () =>
                 {
                     var idParameter = DataProvider.GetIntSqlParameter("Id", id);
-                    var resultSet = await _executeSp.ExecuteStoredProcedureListAsync<UserDetailResultSet>("GetUserDetail", idParameter);
-                    if (resultSet != null)
-                    {
-                        var response = resultSet.Select(x => new UserDetailResponse
-                        {
-                            Id = x.Id,
-                            Name = x.Name,
-                            Email = x.Email,
-                            PhoneNumber = x.PhoneNumber,
-                            CreatedDate = x.CreatedDate.ToString("ddd-MM-yyyy"),
-                            ModifiedDate = x.ModifiedDate.ToString("ddd-MM-yyyy"),
-                            CreatedBy = x.CreatedBy,
-                            ModifiedBy = x.ModifiedBy
 
-                        }).FirstOrDefault();
-                        return response;
-                    }
-                    return null;
-                });
+                    return await _executeSp
+                        .ExecuteStoredProcedureAsync<UserDetailResultSet>(
+                            "GetUserDetail",
+                            idParameter);
+                },
+                expiration: TimeSpan.FromMinutes(5)
+            );
         }
 
-        public async Task<string> AddOrUpdateUser(UserRequest ur)
+
+
+        public async Task<string> AddOrUpdateUser(int userId, UserRequest ur)
         {
             using var transaction = await _uow.BeginTransactionAsync();
             var result = "error while adding or updating the user";
 
             try
             {
-                var loginData = _loggedInUserId.GetUserAndRole();
                 var ExistingUser = await _uow.UserRepository.GetById(ur.Id);
                 var existingUserRole = await _uow.UserRepository.GetRoleMappingById(ur.Id);
-                bool accessToCreate = await _uow.UserRepository.CanCreateRole(loginData.roleId, ur.RoleId);
+                //bool accessToCreate = await _uow.UserRepository.CanCreateRole(loginData.roleId, ur.RoleId);
 
-                if (!accessToCreate)
-                {
-                    result = "You are not allowed to create or update this role.";
-                    return result;
-                }
+                //if (!accessToCreate)
+                //{
+                //    result = "You are not allowed to create or update this role.";
+                //    return result;
+                //}
 
 
                 if (ExistingUser != null && ExistingUser.IsActive && existingUserRole.IsActive)
@@ -104,12 +92,12 @@ namespace Pim.Service
                     ExistingUser.Password = BCrypt.Net.BCrypt.HashPassword(ur.Password);
 
                     ExistingUser.ModifiedDate = DateTime.UtcNow;
-                    ExistingUser.ModifiedBy = loginData.userId;
+                    ExistingUser.ModifiedBy = userId;
                     await _uow.UserRepository.Update(ExistingUser);
 
                     existingUserRole.RoleId = ur.RoleId;
                     existingUserRole.ModifiedDate = DateTime.UtcNow;
-                    existingUserRole.ModifiedBy = loginData.userId;
+                    existingUserRole.ModifiedBy = userId;
 
                     await _uow.UserRepository.UpdateRoleMapping(existingUserRole);
                 }
@@ -123,9 +111,9 @@ namespace Pim.Service
                         Password = BCrypt.Net.BCrypt.HashPassword(ur.Password),
 
                         CreatedDate = DateTime.UtcNow,
-                        CreatedBy = loginData.userId,
+                        CreatedBy = userId,
                         ModifiedDate = DateTime.UtcNow,
-                        ModifiedBy = loginData.userId,
+                        ModifiedBy = userId,
                         IsActive = true
                     };
 
@@ -138,8 +126,8 @@ namespace Pim.Service
                         RoleId = ur.RoleId,
                         CreatedDate = DateTime.UtcNow,
                         ModifiedDate = DateTime.UtcNow,
-                        CreatedBy = loginData.userId,
-                        ModifiedBy = loginData.userId,
+                        CreatedBy = userId,
+                        ModifiedBy = userId,
                         IsActive = true
                     };
 
@@ -161,7 +149,7 @@ namespace Pim.Service
         }
 
 
-        public async Task<string> DeleteUser(int id)
+        public async Task<string> DeleteUser(int userId, int id)
         {
             var result = "User not found or already inactive";
             using var transaction = await _uow.BeginTransactionAsync();
@@ -169,7 +157,7 @@ namespace Pim.Service
             {
                 var user = await _uow.UserRepository.GetById(id);
                 var existingUserRole = await _uow.UserRepository.GetRoleMappingById(user.Id);
-                var loginData = _loggedInUserId.GetUserAndRole();
+                //var loginData = _loggedInUserId.GetUserAndRole();
                 if ((user == null || !user.IsActive) && !existingUserRole.IsActive)
                 {
                     return result;
@@ -177,10 +165,10 @@ namespace Pim.Service
 
                 user.IsActive = false;
                 user.ModifiedDate = DateTime.UtcNow;
-                user.ModifiedBy = loginData.userId;
+                user.ModifiedBy = userId;
                 existingUserRole.IsActive = false;
                 existingUserRole.ModifiedDate = DateTime.UtcNow;
-                existingUserRole.ModifiedBy = loginData.userId;
+                existingUserRole.ModifiedBy = userId;
 
                 await _uow.UserRepository.UpdateRoleMapping(existingUserRole);
                 await _uow.UserRepository.Update(user);

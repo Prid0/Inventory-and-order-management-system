@@ -10,18 +10,16 @@ namespace Pim.Service
     {
         private readonly IUnitOfWork _uow;
         private readonly ExecuteSp _executeSp;
-        private readonly LoggedInUserId _loggedInUserId;
         private readonly CacheService _cacheService;
 
-        public OrderService(IUnitOfWork uow, ExecuteSp executeSp, LoggedInUserId loggedInUserId, CacheService cacheService)
+        public OrderService(IUnitOfWork uow, ExecuteSp executeSp, CacheService cacheService)
         {
             _uow = uow;
             _executeSp = executeSp;
-            _loggedInUserId = loggedInUserId;
             _cacheService = cacheService;
         }
 
-        public async Task<PagedResult<OrdersResponse>> GetAllOrders(int from, int to, int userId)
+        public async Task<PagedResult<OrdersResutSet>> GetAllOrders(int from, int to, int userId)
         {
             string cacheKey = $"order_{from}_{to}";
 
@@ -34,27 +32,17 @@ namespace Pim.Service
                     var toParameter = DataProvider.GetIntSqlParameter("To", to);
                     var userIdParameter = DataProvider.GetIntSqlParameter("UserId", userId);
                     var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
-                    var result = await _executeSp.ExecuteStoredProcedureListAsync<OrdersResutSet>(
+                    var orders = await _executeSp.ExecuteStoredProcedureListAsync<OrdersResutSet>(
                        "GetAllOrders",
                        fromParameter,
                        toParameter,
                        userIdParameter,
                        totalRecordParameter
-
                    );
-                    var orders = result.Select(x => new OrdersResponse
-                    {
-                        UserName = x.UserName,
-                        PhoneNumber = x.PhoneNumber,
-                        OrderNumber = x.OrderNumber,
-                        OrderTotalValue = x.OrderTotalValue,
-                        PlacedOn = x.PlacedOn.ToString("dd-MM-yyyy"),
-                        CancledOn = x.CancledOn.HasValue ? x.CancledOn.Value.ToString("dd-MM-yyyy") : ""
-                    }).ToList();
 
                     totalRecord = Convert.ToInt32(totalRecordParameter.Value);
 
-                    return new PagedResult<OrdersResponse>(orders, totalRecord);
+                    return new PagedResult<OrdersResutSet>(orders, totalRecord);
                 });
         }
 
@@ -69,13 +57,10 @@ namespace Pim.Service
                 {
                     var orderIdParam = DataProvider.GetIntSqlParameter("OrderId", orderId);
 
-                    var result = await _executeSp.ExecuteStoredProcedureListAsync<OrderDetailsResultSet>(
-                        "GetOrderDetails",
-                        orderIdParam
-                    );
-
-                    if (result == null || result.Count == 0)
-                        return null;
+                    var result = await _executeSp
+                        .ExecuteStoredProcedureListAsync<OrderDetailsResultSet>(
+                            "GetOrderDetails",
+                            orderIdParam);
 
                     var response = result
                         .GroupBy(x => new
@@ -98,7 +83,9 @@ namespace Pim.Service
                             TotalQuantity = g.Key.TotalQuantity,
                             OrderTotalValue = g.Key.OrderTotalValue,
                             PlacedOn = g.Key.PlacedOn.ToString("dd-MM-yyyy"),
-                            CancledOn = g.Key.CancledOn.HasValue ? g.Key.CancledOn.Value.ToString("dd-MM-yyyy") : "",
+                            CancledOn = g.Key.CancledOn.HasValue
+                                ? g.Key.CancledOn.Value.ToString("dd-MM-yyyy")
+                                : string.Empty,
 
                             OrderItems = g.Select(item => new OrderItemDetailResponse
                             {
@@ -111,18 +98,20 @@ namespace Pim.Service
                         .FirstOrDefault();
 
                     return response;
-                });
+                },
+                expiration: TimeSpan.FromMinutes(5)
+            );
         }
 
-        public async Task<string> AddOrder(OrderRequest request)
+
+        public async Task<string> AddOrder(int userId, OrderRequest request)
         {
             using var transaction = await _uow.BeginTransactionAsync();
             string result = "error while creating the order";
 
             try
             {
-                var loginData = _loggedInUserId.GetUserAndRole();
-                var validUser = await _uow.UserRepository.GetById(loginData.userId);
+                var validUser = await _uow.UserRepository.GetById(userId);
 
                 if (validUser == null || !validUser.IsActive)
                     return "Invalid or inactive user";
@@ -132,7 +121,7 @@ namespace Pim.Service
 
                 var newOrder = new Order
                 {
-                    UserId = loginData.userId,
+                    UserId = userId,
                     PlacedOn = DateTime.UtcNow,
                     IsActive = true
                 };

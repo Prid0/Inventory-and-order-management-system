@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Pim.Model.Dtos;
 using Pim.Service;
+using Pim.Utility;
 
 namespace Product_And_Inventory_Mangement.Controllers
 {
@@ -10,21 +11,26 @@ namespace Product_And_Inventory_Mangement.Controllers
     public class CategoriesController : ControllerBase
     {
         private readonly ProductCategoryService _categoryService;
+        private readonly LoggedInUserId _loggedInUserId;
 
-        public CategoriesController(ProductCategoryService categoryService)
+        public CategoriesController(ProductCategoryService categoryService, LoggedInUserId loggedInUserId)
         {
             _categoryService = categoryService;
+            _loggedInUserId = loggedInUserId;
         }
 
-        [Authorize(Roles = "1,2")]
+
+        [Authorize(Roles = "Admin,Manager")]
         [HttpPost("AddOrUpdate")]
         public async Task<IActionResult> AddOrUpdateCategory([FromBody] CategoryRequest request)
         {
-            var result = await _categoryService.AddOrUpdateCategory(request);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _categoryService.AddOrUpdateCategory(userId, request);
             return Ok(result);
         }
 
-        [Authorize(Roles = "1,2")]
+
+        [Authorize(Roles = "Admin,Manager")]
         [HttpGet]
         public async Task<IActionResult> GetAllCategories()
         {
@@ -32,7 +38,8 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(categories);
         }
 
-        [Authorize(Roles = "1,2")]
+
+        [Authorize(Roles = "Admin,Manager")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetCategoryById(int id)
         {
@@ -44,11 +51,12 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(category);
         }
 
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Admin,Manager")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
-            var result = await _categoryService.DeleteCategory(id);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _categoryService.DeleteCategory(userId, id);
             return Ok(result);
         }
     }

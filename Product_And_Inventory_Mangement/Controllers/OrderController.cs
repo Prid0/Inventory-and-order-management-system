@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Pim.Model.Dtos;
 using Pim.Service;
+using Pim.Utility;
 
 namespace Product_And_Inventory_Mangement.Controllers
 {
@@ -10,21 +11,24 @@ namespace Product_And_Inventory_Mangement.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly OrderService _orderService;
+        private readonly LoggedInUserId _loggedInUserId;
 
-        public OrdersController(OrderService orderService)
+        public OrdersController(OrderService orderService, LoggedInUserId loggedInUserId)
         {
             _orderService = orderService;
+            _loggedInUserId = loggedInUserId;
         }
 
-        [Authorize(Roles = "3")]
+        [Authorize(Roles = "Customer")]
         [HttpPost]
         public async Task<IActionResult> AddAOrder([FromBody] OrderRequest request)
         {
-            var result = await _orderService.AddOrder(request);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _orderService.AddOrder(userId, request);
             return Ok(result);
         }
 
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Admin,Manager")]
         [HttpGet]
         public async Task<IActionResult> GetAllOrders(int from, int to, int userId)
         {
@@ -32,7 +36,7 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(orders);
         }
 
-        [Authorize(Roles = "1,2,3")]
+        [Authorize(Roles = "Admin,Manager,Customer")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetOrderById(int id)
         {
@@ -44,7 +48,7 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(result);
         }
 
-        [Authorize(Roles = "3")]
+        [Authorize(Roles = "Customer")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteOrder(int id)
         {

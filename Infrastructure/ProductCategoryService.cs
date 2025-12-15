@@ -9,12 +9,10 @@ namespace Pim.Service
     public class ProductCategoryService
     {
         private readonly IUnitOfWork _uow;
-        private readonly LoggedInUserId _loggedInUserId;
         private readonly ExecuteSp _executeSp;
-        public ProductCategoryService(IUnitOfWork uow, LoggedInUserId loggedInUserId, ExecuteSp executeSp)
+        public ProductCategoryService(IUnitOfWork uow, ExecuteSp executeSp)
         {
             _uow = uow;
-            _loggedInUserId = loggedInUserId;
             _executeSp = executeSp;
         }
 
@@ -31,33 +29,17 @@ namespace Pim.Service
             return null;
         }
 
-        public async Task<CategoryDetailResponse> GetCategoryById(int id)
+        public async Task<CategoryDetailResultSet> GetCategoryById(int id)
         {
             var idParameter = DataProvider.GetIntSqlParameter("Id", id);
-            var resultSet = await _executeSp.ExecuteStoredProcedureListAsync<CategoryDetailResultSet>("GetCategoryById", idParameter);
-            if (resultSet != null)
-            {
-                var response = resultSet.Select(x => new CategoryDetailResponse
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    CreatedDate = x.CreatedDate.ToString("ddd-MM-yyyy"),
-                    ModifiedDate = x.ModifiedDate.ToString("ddd-MM-yyyy"),
-                    CreatedBy = x.CreatedBy,
-                    ModifiedBy = x.ModifiedBy
-
-                }).FirstOrDefault();
-                return response;
-            }
-            return null;
+            return await _executeSp.ExecuteStoredProcedureAsync<CategoryDetailResultSet>("GetCategoryById", idParameter);
         }
 
-        public async Task<string> AddOrUpdateCategory(CategoryRequest ur)
+        public async Task<string> AddOrUpdateCategory(int userId, CategoryRequest ur)
         {
             var result = "error while adding or updating the category";
             try
             {
-                var loginData = _loggedInUserId.GetUserAndRole();
                 if (string.IsNullOrWhiteSpace(ur.Type))
                 {
                     result = "category name is required";
@@ -70,7 +52,7 @@ namespace Pim.Service
                 {
                     ExistingCategory.Type = ur.Type;
                     ExistingCategory.ModifiedDate = DateTime.UtcNow;
-                    ExistingCategory.ModifiedBy = loginData.userId;
+                    ExistingCategory.ModifiedBy = userId;
                     ExistingCategory.IsActive = true;
                     await _uow.CategoryRepository.Update(ExistingCategory);
 
@@ -83,8 +65,8 @@ namespace Pim.Service
                         Type = ur.Type,
                         CreatedDate = DateTime.UtcNow,
                         ModifiedDate = DateTime.UtcNow,
-                        CreatedBy = loginData.userId,
-                        ModifiedBy = loginData.userId,
+                        CreatedBy = userId,
+                        ModifiedBy = userId,
                         IsActive = true
                     };
                     await _uow.CategoryRepository.Add(category);
@@ -99,11 +81,10 @@ namespace Pim.Service
             return result;
         }
 
-        public async Task<string> DeleteCategory(int id)
+        public async Task<string> DeleteCategory(int userId, int id)
         {
             try
             {
-                var loginData = _loggedInUserId.GetUserAndRole();
                 var category = await _uow.CategoryRepository.GetById(id);
 
                 if (category == null || !category.IsActive)
@@ -112,7 +93,7 @@ namespace Pim.Service
                 }
 
                 category.ModifiedDate = DateTime.UtcNow;
-                category.ModifiedBy = loginData.userId;
+                category.ModifiedBy = userId;
                 category.IsActive = false;
                 await _uow.CategoryRepository.Update(category);
                 await _uow.Commit();

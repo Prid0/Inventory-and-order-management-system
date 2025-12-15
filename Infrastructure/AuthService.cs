@@ -24,22 +24,23 @@ namespace Pim.Service
             var user = await _uow.UserRepository.GetUserByEmail(email);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
-                return new LoginResponse { Success = false, Token = "", UserId = 0, RoleId = 0 };
+                return new LoginResponse { Success = false, Token = "", UserId = 0, Role = "" };
 
-            var role = await _uow.UserRepository.GetRoleMappingById(user.Id);
+            var roleId = await _uow.UserRepository.GetRoleMappingById(user.Id);
+            var role = await _uow.RoleRepository.GetById(roleId.RoleId);
 
-            string token = GenerateJwtToken(user.Id, role.RoleId);
+            string token = GenerateJwtToken(user.Id, role.RoleType);
 
             return new LoginResponse
             {
                 Success = true,
                 Token = token,
                 UserId = user.Id,
-                RoleId = role.RoleId
+                Role = role.RoleType
             };
         }
 
-        private string GenerateJwtToken(int userId, int roleId)
+        private string GenerateJwtToken(int userId, string role)
         {
             var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"]);
             var creds = new SigningCredentials(
@@ -49,7 +50,7 @@ namespace Pim.Service
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                new Claim(ClaimTypes.Role, roleId.ToString())
+                new Claim(ClaimTypes.Role, role)
             };
 
             var token = new JwtSecurityToken(

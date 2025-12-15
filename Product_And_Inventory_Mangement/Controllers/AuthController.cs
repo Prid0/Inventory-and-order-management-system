@@ -27,7 +27,7 @@ namespace Pim.Api.Controllers
             {
                 token = result.Token,
                 userId = result.UserId,
-                roleId = result.RoleId
+                role = result.Role
             });
         }
     }

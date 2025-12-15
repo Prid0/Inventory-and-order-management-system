@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Pim.Model.Dtos;
 using Pim.Service;
+using Pim.Utility;
 
 namespace Product_And_Inventory_Mangement.Controllers
 {
@@ -10,20 +11,24 @@ namespace Product_And_Inventory_Mangement.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly ProductService _productService;
+        private readonly LoggedInUserId _loggedInUserId;
 
-        public ProductsController(ProductService productService)
+        public ProductsController(ProductService productService, LoggedInUserId loggedInUserId)
         {
             _productService = productService;
+            _loggedInUserId = loggedInUserId;
         }
 
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Admin,Manager")]
         [HttpPost("AddOrUpdate")]
         public async Task<IActionResult> AddOrUpdateProduct([FromBody] ProductRequest request)
         {
-            var result = await _productService.AddOrUpdateProduct(request);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _productService.AddOrUpdateProduct(userId, request);
             return Ok(result);
         }
 
+        [Authorize(Roles = "Admin,Manager,Customer")]
         [HttpGet]
         public async Task<IActionResult> GetAllProducts(int from, int to)
         {
@@ -31,7 +36,7 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(products);
         }
 
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Admin,Manager,Customer")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetByIdProduct(int id)
         {
@@ -43,11 +48,12 @@ namespace Product_And_Inventory_Mangement.Controllers
             return Ok(product);
         }
 
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Admin,Manager")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
-            var result = await _productService.DeleteProduct(id);
+            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
+            var result = await _productService.DeleteProduct(userId, id);
             return Ok(result);
         }
     }

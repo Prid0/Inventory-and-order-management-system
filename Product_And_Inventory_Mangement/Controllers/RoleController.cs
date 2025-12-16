@@ -8,23 +8,21 @@ namespace Product_And_Inventory_Mangement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class RolesController : ControllerBase
+    public class RolesController : BaseApiController
     {
         private readonly RoleService _roleService;
-        private readonly LoggedInUserId _loggedInUserId;
 
-        public RolesController(RoleService roleService, LoggedInUserId loggedInUserId)
+        public RolesController(RoleService roleService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
         {
             _roleService = roleService;
-            _loggedInUserId = loggedInUserId;
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPost("AddOrUpdate")]
         public async Task<IActionResult> AddOrUpdateRole([FromBody] RoleRequest request)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _roleService.AddOrUpdateRole(userId, request);
+
             return Ok(result);
         }
 
@@ -42,23 +40,16 @@ namespace Product_And_Inventory_Mangement.Controllers
         {
             var result = await _roleService.GetRolesById(id);
 
-            if (result != null)
-                return Ok(result);
-
-            return NotFound();
+            return result != null ? Ok(result) : NotFound();
         }
 
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRole(int id)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _roleService.DeleteRole(userId, id);
 
-            if (result != null)
-                return Ok(result);
-
-            return NotFound();
+            return result != null ? Ok(result) : NotFound();
         }
     }
 }

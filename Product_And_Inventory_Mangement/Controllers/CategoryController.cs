@@ -8,15 +8,13 @@ namespace Product_And_Inventory_Mangement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class CategoriesController : ControllerBase
+    public class CategoriesController : BaseApiController
     {
         private readonly ProductCategoryService _categoryService;
-        private readonly LoggedInUserId _loggedInUserId;
 
-        public CategoriesController(ProductCategoryService categoryService, LoggedInUserId loggedInUserId)
+        public CategoriesController(ProductCategoryService categoryService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
         {
             _categoryService = categoryService;
-            _loggedInUserId = loggedInUserId;
         }
 
 
@@ -24,13 +22,12 @@ namespace Product_And_Inventory_Mangement.Controllers
         [HttpPost("AddOrUpdate")]
         public async Task<IActionResult> AddOrUpdateCategory([FromBody] CategoryRequest request)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _categoryService.AddOrUpdateCategory(userId, request);
             return Ok(result);
         }
 
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "Admin,Manager,Customer")]
         [HttpGet]
         public async Task<IActionResult> GetAllCategories()
         {
@@ -55,7 +52,6 @@ namespace Product_And_Inventory_Mangement.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _categoryService.DeleteCategory(userId, id);
             return Ok(result);
         }

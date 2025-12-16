@@ -1,7 +1,6 @@
 ﻿using Pim.Data.Infrastructure;
 using Pim.Data.Models;
 using Pim.Model.Dtos;
-using Pim.Utility;
 using Pim.Utility.SqlHelper;
 
 namespace Pim.Service
@@ -16,23 +15,17 @@ namespace Pim.Service
             _executeSp = executeSp;
         }
 
-        public async Task<PagedResult<CategoryResponse>> GetAllCategory()
+        public async Task<List<CategoryResponse>> GetAllCategory()
         {
-            var data = await _uow.CategoryRepository.GetAll();
-            var response = data.Where(u => u.IsActive).Select(x => new CategoryResponse { Id = x.Id, Type = x.Type }).ToList();
-            var totalRecord = 0;
-            if (response != null)
-            {
-                totalRecord = response.Count();
-                return new PagedResult<CategoryResponse>(response, totalRecord);
-            }
-            return null;
+            var data = await _executeSp.ExecuteStoredProcedureListAsync<CategoryResponse>("GetALLCategories");
+            return data;
         }
 
         public async Task<CategoryDetailResultSet> GetCategoryById(int id)
         {
             var idParameter = DataProvider.GetIntSqlParameter("Id", id);
-            return await _executeSp.ExecuteStoredProcedureAsync<CategoryDetailResultSet>("GetCategoryById", idParameter);
+            var result = await _executeSp.ExecuteStoredProcedureAsync<CategoryDetailResultSet>("GetCategoryById", idParameter);
+            return result;
         }
 
         public async Task<string> AddOrUpdateCategory(int userId, CategoryRequest ur)

@@ -75,14 +75,6 @@ namespace Pim.Service
             {
                 var ExistingUser = await _uow.UserRepository.GetById(ur.Id);
                 var existingUserRole = await _uow.UserRepository.GetRoleMappingById(ur.Id);
-                //bool accessToCreate = await _uow.UserRepository.CanCreateRole(loginData.roleId, ur.RoleId);
-
-                //if (!accessToCreate)
-                //{
-                //    result = "You are not allowed to create or update this role.";
-                //    return result;
-                //}
-
 
                 if (ExistingUser != null && ExistingUser.IsActive && existingUserRole.IsActive)
                 {
@@ -157,7 +149,6 @@ namespace Pim.Service
             {
                 var user = await _uow.UserRepository.GetById(id);
                 var existingUserRole = await _uow.UserRepository.GetRoleMappingById(user.Id);
-                //var loginData = _loggedInUserId.GetUserAndRole();
                 if ((user == null || !user.IsActive) && !existingUserRole.IsActive)
                 {
                     return result;

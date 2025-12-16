@@ -8,22 +8,19 @@ namespace Product_And_Inventory_Mangement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductsController : ControllerBase
+    public class ProductsController : BaseApiController
     {
         private readonly ProductService _productService;
-        private readonly LoggedInUserId _loggedInUserId;
 
-        public ProductsController(ProductService productService, LoggedInUserId loggedInUserId)
+        public ProductsController(ProductService productService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
         {
             _productService = productService;
-            _loggedInUserId = loggedInUserId;
         }
 
         [Authorize(Roles = "Admin,Manager")]
         [HttpPost("AddOrUpdate")]
         public async Task<IActionResult> AddOrUpdateProduct([FromBody] ProductRequest request)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _productService.AddOrUpdateProduct(userId, request);
             return Ok(result);
         }
@@ -52,7 +49,6 @@ namespace Product_And_Inventory_Mangement.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _productService.DeleteProduct(userId, id);
             return Ok(result);
         }

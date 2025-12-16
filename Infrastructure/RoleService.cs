@@ -15,13 +15,13 @@ namespace Pim.Service
             _executeSp = executeSp;
         }
 
-        public async Task<RoleResponse> GetAllRoles()
+        public async Task<List<RoleResponse>> GetAllRoles()
         {
-            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", 0);
-            var response = _executeSp.ExecuteStoredProcedureListAsync<RoleResponse>("GetActiveRoles", null);
+            var response = await _executeSp.ExecuteStoredProcedureListAsync<RoleResponse>("GetALLRoles");
 
             return response;
         }
+
         public async Task<RoleDetailResultSet> GetRolesById(int id)
         {
             var roleIdParameter = DataProvider.GetIntSqlParameter("RoleId", id);

@@ -32,7 +32,7 @@ namespace Pim.Utility.SqlHelper
                 commandType: CommandType.StoredProcedure
             );
 
-            return rows.AsList();
+            return rows.ToList();
         }
 
         public async Task<T> ExecuteStoredProcedureAsync<T>(

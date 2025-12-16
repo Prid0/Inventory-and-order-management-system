@@ -32,13 +32,10 @@ public class ErrorLoggingMiddleware
                 var errorLogsService = scope.ServiceProvider.GetRequiredService<ErrorLogsService>();
                 var loggedInUserId = scope.ServiceProvider.GetRequiredService<LoggedInUserId>();
 
-                var loggedInData = loggedInUserId.GetUserAndRole();
-
                 if (context.User.Identity?.IsAuthenticated == true)
                 {
                     var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    if (!string.IsNullOrEmpty(userIdClaim))
-                        loggedInData.userId = int.Parse(userIdClaim);
+                    if (!string.IsNullOrEmpty(userIdClaim)) ;
                 }
 
                 var log = new ErrorLog
@@ -48,13 +45,11 @@ public class ErrorLoggingMiddleware
                     ResponseStatusCode = context.Response.StatusCode.ToString(),
                     ErrorMessage = ex.Message,
                     ExecutionTime = stopwatch.ElapsedMilliseconds + " ms",
-                    MadeBy = loggedInData.userId
                 };
 
                 await errorLogsService.AddAsync(log);
             }
 
-            // Exception swallowed; request continues
         }
     }
 }

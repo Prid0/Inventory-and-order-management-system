@@ -8,22 +8,19 @@ namespace Product_And_Inventory_Mangement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class OrdersController : ControllerBase
+    public class OrdersController : BaseApiController
     {
         private readonly OrderService _orderService;
-        private readonly LoggedInUserId _loggedInUserId;
 
-        public OrdersController(OrderService orderService, LoggedInUserId loggedInUserId)
+        public OrdersController(OrderService orderService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
         {
             _orderService = orderService;
-            _loggedInUserId = loggedInUserId;
         }
 
         [Authorize(Roles = "Customer")]
         [HttpPost]
         public async Task<IActionResult> AddAOrder([FromBody] OrderRequest request)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _orderService.AddOrder(userId, request);
             return Ok(result);
         }

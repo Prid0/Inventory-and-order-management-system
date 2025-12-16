@@ -8,21 +8,18 @@ namespace Product_And_Inventory_Mangement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsersController : ControllerBase
+    public class UsersController : BaseApiController
     {
         private readonly UserService _userService;
-        private readonly LoggedInUserId _loggedInUserId;
 
-        public UsersController(UserService userService, LoggedInUserId loggedInUserId)
+        public UsersController(UserService userService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
         {
             _userService = userService;
-            _loggedInUserId = loggedInUserId;
         }
 
         [HttpPost("AddOrUpdate")]
         public async Task<IActionResult> AddOrUpdateUser([FromBody] UserRequest request)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _userService.AddOrUpdateUser(userId, request);
             return Ok(result);
         }
@@ -51,7 +48,6 @@ namespace Product_And_Inventory_Mangement.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            var (userId, roleId) = _loggedInUserId.GetUserAndRole();
             var result = await _userService.DeleteUser(userId, id);
             return Ok(result);
         }

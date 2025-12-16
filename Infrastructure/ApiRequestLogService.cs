@@ -6,17 +6,17 @@ namespace Pim.Service
 {
     public class ApiRequestLogService : IApiRequestLogService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public ApiRequestLogService(IUnitOfWork uow)
+        public ApiRequestLogService(IUnitOfWork unitOfWork)
         {
-            _uow = uow;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task AddAsync(ApiRequestLog log)
         {
-            await _uow.ApiRequestLogRepository.Add(log);
-            await _uow.Commit();
+            await _unitOfWork.ApiRequestLogRepository.Add(log);
+            await _unitOfWork.Commit();
         }
 
     }

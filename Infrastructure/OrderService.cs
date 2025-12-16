@@ -9,13 +9,13 @@ namespace Pim.Service
 {
     public class OrderService : IOrderService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ExecuteSp _executeSp;
         private readonly CacheService _cacheService;
 
-        public OrderService(IUnitOfWork uow, ExecuteSp executeSp, CacheService cacheService)
+        public OrderService(IUnitOfWork unitOfWork, ExecuteSp executeSp, CacheService cacheService)
         {
-            _uow = uow;
+            _unitOfWork = unitOfWork;
             _executeSp = executeSp;
             _cacheService = cacheService;
         }
@@ -107,12 +107,12 @@ namespace Pim.Service
 
         public async Task<string> AddOrder(int userId, OrderRequest request)
         {
-            using var transaction = await _uow.BeginTransactionAsync();
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
             string result = "error while creating the order";
 
             try
             {
-                var validUser = await _uow.UserRepository.GetById(userId);
+                var validUser = await _unitOfWork.UserRepository.GetById(userId);
 
                 if (validUser == null || !validUser.IsActive)
                     return "Invalid or inactive user";
@@ -127,10 +127,10 @@ namespace Pim.Service
                     IsActive = true
                 };
 
-                await _uow.OrderRepository.Add(newOrder);
-                await _uow.Commit();
+                await _unitOfWork.OrderRepository.Add(newOrder);
+                await _unitOfWork.Commit();
 
-                var activeProducts = (await _uow.ProductRepository.GetAll())
+                var activeProducts = (await _unitOfWork.ProductRepository.GetAll())
                                         .Where(p => p.IsActive)
                                         .ToList();
 
@@ -155,11 +155,11 @@ namespace Pim.Service
 
                     product.Quantity -= item.Quantity;
 
-                    await _uow.ProductRepository.Update(product);
-                    await _uow.OrderRepository.AddOrderItems(orderItem);
+                    await _unitOfWork.ProductRepository.Update(product);
+                    await _unitOfWork.OrderRepository.AddOrderItems(orderItem);
                 }
 
-                await _uow.Commit();
+                await _unitOfWork.Commit();
                 await transaction.CommitAsync();
                 _cacheService.Remove($"order_{request.OrderId}");
                 result = "success";
@@ -180,7 +180,7 @@ namespace Pim.Service
 
             try
             {
-                var order = await _uow.OrderRepository.GetById(orderId);
+                var order = await _unitOfWork.OrderRepository.GetById(orderId);
 
                 if (order == null || !order.IsActive)
                 {
@@ -191,8 +191,8 @@ namespace Pim.Service
                 order.IsActive = false;
                 order.CancledOn = DateTime.UtcNow;
 
-                await _uow.OrderRepository.Update(order);
-                await _uow.Commit();
+                await _unitOfWork.OrderRepository.Update(order);
+                await _unitOfWork.Commit();
                 _cacheService.Remove($"order_{orderId}");
                 result = "success";
             }

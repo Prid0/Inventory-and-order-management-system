@@ -6,17 +6,17 @@ namespace Pim.Service
 {
     public class ErrorLogsService : IErrorLogsService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public ErrorLogsService(IUnitOfWork uow)
+        public ErrorLogsService(IUnitOfWork unitOfWork)
         {
-            _uow = uow;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task AddAsync(ErrorLog log)
         {
-            await _uow.ErrorLogRepository.Add(log);
-            await _uow.Commit();
+            await _unitOfWork.ErrorLogRepository.Add(log);
+            await _unitOfWork.Commit();
         }
     }
 }

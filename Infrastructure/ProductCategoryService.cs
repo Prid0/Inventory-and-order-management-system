@@ -8,11 +8,11 @@ namespace Pim.Service
 {
     public class ProductCategoryService : IProductCategoryService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ExecuteSp _executeSp;
-        public ProductCategoryService(IUnitOfWork uow, ExecuteSp executeSp)
+        public ProductCategoryService(IUnitOfWork unitOfWork, ExecuteSp executeSp)
         {
-            _uow = uow;
+            _unitOfWork = unitOfWork;
             _executeSp = executeSp;
         }
 
@@ -40,7 +40,7 @@ namespace Pim.Service
                     return result;
                 }
 
-                var ExistingCategory = await _uow.CategoryRepository.GetCategoryByNameOrId(ur.CategoryId, ur.Type);
+                var ExistingCategory = await _unitOfWork.CategoryRepository.GetCategoryByNameOrId(ur.CategoryId, ur.Type);
 
                 if (ExistingCategory != null)
                 {
@@ -48,7 +48,7 @@ namespace Pim.Service
                     ExistingCategory.ModifiedDate = DateTime.UtcNow;
                     ExistingCategory.ModifiedBy = userId;
                     ExistingCategory.IsActive = true;
-                    await _uow.CategoryRepository.Update(ExistingCategory);
+                    await _unitOfWork.CategoryRepository.Update(ExistingCategory);
 
                     result = "category updated successfully";
                 }
@@ -63,10 +63,10 @@ namespace Pim.Service
                         ModifiedBy = userId,
                         IsActive = true
                     };
-                    await _uow.CategoryRepository.Add(category);
+                    await _unitOfWork.CategoryRepository.Add(category);
                 }
                 result = "success";
-                await _uow.Commit();
+                await _unitOfWork.Commit();
             }
             catch (Exception ex)
             {
@@ -79,7 +79,7 @@ namespace Pim.Service
         {
             try
             {
-                var category = await _uow.CategoryRepository.GetById(id);
+                var category = await _unitOfWork.CategoryRepository.GetById(id);
 
                 if (category == null || !category.IsActive)
                 {
@@ -89,8 +89,8 @@ namespace Pim.Service
                 category.ModifiedDate = DateTime.UtcNow;
                 category.ModifiedBy = userId;
                 category.IsActive = false;
-                await _uow.CategoryRepository.Update(category);
-                await _uow.Commit();
+                await _unitOfWork.CategoryRepository.Update(category);
+                await _unitOfWork.Commit();
 
             }
             catch (Exception ex)

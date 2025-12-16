@@ -9,12 +9,12 @@ namespace Pim.Service
 {
     public class UserService : IUserService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ExecuteSp _executeSp;
         private readonly CacheService _cacheService;
-        public UserService(IUnitOfWork uow, ExecuteSp executeSp, CacheService cacheService)
+        public UserService(IUnitOfWork unitOfWork, ExecuteSp executeSp, CacheService cacheService)
         {
-            _uow = uow;
+            _unitOfWork = unitOfWork;
             _executeSp = executeSp;
             _cacheService = cacheService;
         }
@@ -69,13 +69,13 @@ namespace Pim.Service
 
         public async Task<string> AddOrUpdateUser(int userId, UserRequest ur)
         {
-            using var transaction = await _uow.BeginTransactionAsync();
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
             var result = "error while adding or updating the user";
 
             try
             {
-                var ExistingUser = await _uow.UserRepository.GetById(ur.Id);
-                var existingUserRole = await _uow.UserRepository.GetRoleMappingById(ur.Id);
+                var ExistingUser = await _unitOfWork.UserRepository.GetById(ur.Id);
+                var existingUserRole = await _unitOfWork.UserRepository.GetRoleMappingById(ur.Id);
 
                 if (ExistingUser != null && ExistingUser.IsActive && existingUserRole.IsActive)
                 {
@@ -86,13 +86,13 @@ namespace Pim.Service
 
                     ExistingUser.ModifiedDate = DateTime.UtcNow;
                     ExistingUser.ModifiedBy = userId;
-                    await _uow.UserRepository.Update(ExistingUser);
+                    await _unitOfWork.UserRepository.Update(ExistingUser);
 
                     existingUserRole.RoleId = ur.RoleId;
                     existingUserRole.ModifiedDate = DateTime.UtcNow;
                     existingUserRole.ModifiedBy = userId;
 
-                    await _uow.UserRepository.UpdateRoleMapping(existingUserRole);
+                    await _unitOfWork.UserRepository.UpdateRoleMapping(existingUserRole);
                 }
                 else
                 {
@@ -110,8 +110,8 @@ namespace Pim.Service
                         IsActive = true
                     };
 
-                    await _uow.UserRepository.Add(user);
-                    await _uow.Commit();
+                    await _unitOfWork.UserRepository.Add(user);
+                    await _unitOfWork.Commit();
 
                     var mapping = new UserRoleMapping
                     {
@@ -124,10 +124,10 @@ namespace Pim.Service
                         IsActive = true
                     };
 
-                    await _uow.UserRepository.AddRoleMapping(mapping);
+                    await _unitOfWork.UserRepository.AddRoleMapping(mapping);
                 }
 
-                await _uow.Commit();
+                await _unitOfWork.Commit();
                 await transaction.CommitAsync();
                 _cacheService.Remove($"users_{ur.Id}");
                 result = "success";
@@ -145,11 +145,11 @@ namespace Pim.Service
         public async Task<string> DeleteUser(int userId, int id)
         {
             var result = "User not found or already inactive";
-            using var transaction = await _uow.BeginTransactionAsync();
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                var user = await _uow.UserRepository.GetById(id);
-                var existingUserRole = await _uow.UserRepository.GetRoleMappingById(user.Id);
+                var user = await _unitOfWork.UserRepository.GetById(id);
+                var existingUserRole = await _unitOfWork.UserRepository.GetRoleMappingById(user.Id);
                 if ((user == null || !user.IsActive) && !existingUserRole.IsActive)
                 {
                     return result;
@@ -162,9 +162,9 @@ namespace Pim.Service
                 existingUserRole.ModifiedDate = DateTime.UtcNow;
                 existingUserRole.ModifiedBy = userId;
 
-                await _uow.UserRepository.UpdateRoleMapping(existingUserRole);
-                await _uow.UserRepository.Update(user);
-                await _uow.Commit();
+                await _unitOfWork.UserRepository.UpdateRoleMapping(existingUserRole);
+                await _unitOfWork.UserRepository.Update(user);
+                await _unitOfWork.Commit();
                 await transaction.CommitAsync();
                 _cacheService.Remove($"users_{id}");
                 result = "success";
@@ -184,7 +184,7 @@ namespace Pim.Service
 
             try
             {
-                var ExistingUser = await _uow.UserRepository.GetUserByEmailAndPhone(request.Email, request.PhoneNumber);
+                var ExistingUser = await _unitOfWork.UserRepository.GetUserByEmailAndPhone(request.Email, request.PhoneNumber);
 
                 if (ExistingUser != null)
                 {
@@ -198,8 +198,8 @@ namespace Pim.Service
                     ExistingUser.ModifiedDate = DateTime.UtcNow;
                     ExistingUser.ModifiedBy = ExistingUser.Id;
 
-                    await _uow.UserRepository.Update(ExistingUser);
-                    await _uow.Commit();
+                    await _unitOfWork.UserRepository.Update(ExistingUser);
+                    await _unitOfWork.Commit();
                     _cacheService.Remove($"users_{ExistingUser.Id}");
                     result = "Password reset successful";
                 }

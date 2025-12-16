@@ -9,13 +9,13 @@ namespace Pim.Service
 {
     public class ProductService : IProductService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ExecuteSp _executeSp;
         private readonly CacheService _cacheService;
 
-        public ProductService(IUnitOfWork uow, ExecuteSp executeSp, CacheService cacheService)
+        public ProductService(IUnitOfWork unitOfWork, ExecuteSp executeSp, CacheService cacheService)
         {
-            _uow = uow;
+            _unitOfWork = unitOfWork;
             _executeSp = executeSp;
             _cacheService = cacheService;
         }
@@ -60,13 +60,13 @@ namespace Pim.Service
             var result = "error while adding or updating the user";
             try
             {
-                var isValidCategory = await _uow.CategoryRepository.isValidCategory(ur.CategoryId);
+                var isValidCategory = await _unitOfWork.CategoryRepository.isValidCategory(ur.CategoryId);
                 if (!isValidCategory)
                 {
                     result = "Please enter select Category";
                     return result;
                 }
-                var existingProduct = await _uow.ProductRepository.GetProductByNameOrId(ur.ProductId, ur.Name);
+                var existingProduct = await _unitOfWork.ProductRepository.GetProductByNameOrId(ur.ProductId, ur.Name);
 
                 if (existingProduct != null && existingProduct.IsActive && isValidCategory)
                 {
@@ -78,7 +78,7 @@ namespace Pim.Service
                     existingProduct.ModifiedDate = DateTime.UtcNow;
                     existingProduct.ModifiedBy = userId;
 
-                    await _uow.ProductRepository.Update(existingProduct);
+                    await _unitOfWork.ProductRepository.Update(existingProduct);
                 }
                 else
                 {
@@ -95,10 +95,10 @@ namespace Pim.Service
                         ModifiedBy = userId,
                         IsActive = true
                     };
-                    await _uow.ProductRepository.Add(product);
+                    await _unitOfWork.ProductRepository.Add(product);
                 }
 
-                await _uow.Commit();
+                await _unitOfWork.Commit();
 
                 _cacheService.Remove($"products_{ur.ProductId}");
 
@@ -116,7 +116,7 @@ namespace Pim.Service
             var result = "error";
             try
             {
-                var product = await _uow.ProductRepository.GetById(id);
+                var product = await _unitOfWork.ProductRepository.GetById(id);
 
                 if (product == null || !product.IsActive)
                 {
@@ -126,8 +126,8 @@ namespace Pim.Service
                 product.ModifiedDate = DateTime.UtcNow;
                 product.ModifiedBy = userId;
                 product.IsActive = false;
-                await _uow.ProductRepository.Update(product);
-                await _uow.Commit();
+                await _unitOfWork.ProductRepository.Update(product);
+                await _unitOfWork.Commit();
 
                 _cacheService.Remove($"products_{id}");
 

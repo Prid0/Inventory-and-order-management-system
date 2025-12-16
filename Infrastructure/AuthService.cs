@@ -11,24 +11,24 @@ namespace Pim.Service
 {
     public class AuthService : IAuthService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _config;
 
-        public AuthService(IUnitOfWork uow, IConfiguration config)
+        public AuthService(IUnitOfWork unitOfWork, IConfiguration config)
         {
-            _uow = uow;
+            _unitOfWork = unitOfWork;
             _config = config;
         }
 
         public async Task<LoginResponse> Login(string email, string password)
         {
-            var user = await _uow.UserRepository.GetUserByEmail(email);
+            var user = await _unitOfWork.UserRepository.GetUserByEmail(email);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
                 return new LoginResponse { Success = false, Token = "", UserId = 0, Role = "" };
 
-            var roleId = await _uow.UserRepository.GetRoleMappingById(user.Id);
-            var role = await _uow.RoleRepository.GetById(roleId.RoleId);
+            var roleId = await _unitOfWork.UserRepository.GetRoleMappingById(user.Id);
+            var role = await _unitOfWork.RoleRepository.GetById(roleId.RoleId);
 
             string token = GenerateJwtToken(user.Id, role.RoleType);
 

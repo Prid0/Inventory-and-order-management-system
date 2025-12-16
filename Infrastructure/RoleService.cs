@@ -8,11 +8,11 @@ namespace Pim.Service
 {
     public class RoleService : IRoleService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ExecuteSp _executeSp;
-        public RoleService(IUnitOfWork uow, ExecuteSp executeSp)
+        public RoleService(IUnitOfWork unitOfWork, ExecuteSp executeSp)
         {
-            _uow = uow;
+            _unitOfWork = unitOfWork;
             _executeSp = executeSp;
         }
 
@@ -35,7 +35,7 @@ namespace Pim.Service
             var result = "An error occurred while adding or updating the role.";
             try
             {
-                var existingRole = await _uow.RoleRepository.GetRoleByNameOrId(role.RoleId, role.RoleType);
+                var existingRole = await _unitOfWork.RoleRepository.GetRoleByNameOrId(role.RoleId, role.RoleType);
 
                 if (existingRole != null)
                 {
@@ -44,7 +44,7 @@ namespace Pim.Service
                     existingRole.ModifiedBy = userId;
                     existingRole.IsActive = true;
 
-                    await _uow.RoleRepository.Update(existingRole);
+                    await _unitOfWork.RoleRepository.Update(existingRole);
                 }
                 else
                 {
@@ -58,10 +58,10 @@ namespace Pim.Service
                         IsActive = true
                     };
 
-                    await _uow.RoleRepository.Add(newRole);
+                    await _unitOfWork.RoleRepository.Add(newRole);
                 }
 
-                await _uow.Commit();
+                await _unitOfWork.Commit();
                 result = "success";
             }
             catch (Exception ex)
@@ -76,7 +76,7 @@ namespace Pim.Service
             var result = "Role not found or already inactive.";
             try
             {
-                var role = await _uow.RoleRepository.GetById(id);
+                var role = await _unitOfWork.RoleRepository.GetById(id);
 
                 if (role == null || !role.IsActive)
                 {
@@ -86,8 +86,8 @@ namespace Pim.Service
                 role.ModifiedDate = DateTime.UtcNow;
                 role.ModifiedBy = userId;
                 role.IsActive = false;
-                await _uow.RoleRepository.Update(role);
-                await _uow.Commit();
+                await _unitOfWork.RoleRepository.Update(role);
+                await _unitOfWork.Commit();
 
                 result = "success";
             }

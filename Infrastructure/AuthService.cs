@@ -2,13 +2,14 @@
 using Microsoft.IdentityModel.Tokens;
 using Pim.Data.Infrastructure;
 using Pim.Model.Dtos;
+using Pim.Service.IService;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
 namespace Pim.Service
 {
-    public class AuthService
+    public class AuthService : IAuthService
     {
         private readonly IUnitOfWork _uow;
         private readonly IConfiguration _config;

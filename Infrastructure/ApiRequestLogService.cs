@@ -4,19 +4,20 @@ using Pim.Service.IService;
 
 namespace Pim.Service
 {
-    public class ErrorLogsService : IErrorLogsService
+    public class ApiRequestLogService : IApiRequestLogService
     {
         private readonly IUnitOfWork _uow;
 
-        public ErrorLogsService(IUnitOfWork uow)
+        public ApiRequestLogService(IUnitOfWork uow)
         {
             _uow = uow;
         }
 
-        public async Task AddAsync(ErrorLog log)
+        public async Task AddAsync(ApiRequestLog log)
         {
-            await _uow.ErrorLogRepository.Add(log);
+            await _uow.ApiRequestLogRepository.Add(log);
             await _uow.Commit();
         }
+
     }
 }

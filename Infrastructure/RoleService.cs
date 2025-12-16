@@ -1,11 +1,12 @@
 ﻿using Pim.Data.Infrastructure;
 using Pim.Data.Models;
 using Pim.Model.Dtos;
+using Pim.Service.IService;
 using Pim.Utility.SqlHelper;
 
 namespace Pim.Service
 {
-    public class RoleService
+    public class RoleService : IRoleService
     {
         private readonly IUnitOfWork _uow;
         private readonly ExecuteSp _executeSp;

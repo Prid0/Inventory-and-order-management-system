@@ -1,12 +1,13 @@
 ﻿using Pim.Data.Infrastructure;
 using Pim.Data.Models;
 using Pim.Model.Dtos;
+using Pim.Service.IService;
 using Pim.Utility;
 using Pim.Utility.SqlHelper;
 
 namespace Pim.Service
 {
-    public class OrderService
+    public class OrderService : IOrderService
     {
         private readonly IUnitOfWork _uow;
         private readonly ExecuteSp _executeSp;

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
+using Pim.Data.Repository.ApiRequestLogs;
 using Pim.Data.Repository.Category;
 using Pim.Data.Repository.ErrorLogs;
 using Pim.Data.Repository.Orders;
@@ -20,6 +21,7 @@ namespace Pim.Data.Infrastructure
 
         public ICategoryRepository CategoryRepository { get; }
         public IErrorLogRepository ErrorLogRepository { get; }
+        public IApiRequestLogRepository ApiRequestLogRepository { get; }
         Task<IDbContextTransaction> BeginTransactionAsync();
 
         Task<int> Commit();

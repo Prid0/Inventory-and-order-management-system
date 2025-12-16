@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Pim.Data;
 using Pim.Data.Infrastructure;
+using Pim.Data.Repository.ApiRequestLogs;
 using Pim.Data.Repository.Category;
 using Pim.Data.Repository.ErrorLogs;
 using Pim.Data.Repository.Orders;
@@ -12,6 +13,7 @@ using Pim.Data.Repository.User;
 using Pim.Service;
 using Pim.Utility;
 using Pim.Utility.SqlHelper;
+using Product_And_Inventory_Mangement.Middleware;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -77,6 +79,7 @@ builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+builder.Services.AddScoped<IApiRequestLogRepository, ApiRequestLogRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Services
@@ -107,6 +110,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseMiddleware<ApiRequestLoggingMiddleware>();
 app.UseMiddleware<ErrorLoggingMiddleware>();
 
 app.UseAuthentication();

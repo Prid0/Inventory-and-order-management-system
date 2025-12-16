@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
+using Pim.Data.Repository.ApiRequestLogs;
 using Pim.Data.Repository.Category;
 using Pim.Data.Repository.ErrorLogs;
 using Pim.Data.Repository.Orders;
@@ -16,6 +17,7 @@ namespace Pim.Data.Infrastructure
         public IOrderRepository OrderRepository { get; }
         public ICategoryRepository CategoryRepository { get; }
         public IErrorLogRepository ErrorLogRepository { get; }
+        public IApiRequestLogRepository ApiRequestLogRepository { get; }
 
         private ApplicationDbContext _context;
 
@@ -26,6 +28,7 @@ namespace Pim.Data.Infrastructure
             IOrderRepository orderRepository,
             ICategoryRepository categoryRepository,
             IErrorLogRepository errorLogRepository,
+            IApiRequestLogRepository apiRequestLogRepository,
             ApplicationDbContext context)
         {
             UserRepository = userRepository;
@@ -34,6 +37,7 @@ namespace Pim.Data.Infrastructure
             OrderRepository = orderRepository;
             CategoryRepository = categoryRepository;
             ErrorLogRepository = errorLogRepository;
+            ApiRequestLogRepository = apiRequestLogRepository;
             _context = context;
         }
 

@@ -9,8 +9,8 @@
 
         public string ResponseStatusCode { get; set; }
         public string ErrorMessage { get; set; }
+        public string StackTrace { get; set; }
 
         public string ExecutionTime { get; set; }
-        public int MadeBy { get; set; }
     }
 }

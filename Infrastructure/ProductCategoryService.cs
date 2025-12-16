@@ -1,11 +1,12 @@
 ﻿using Pim.Data.Infrastructure;
 using Pim.Data.Models;
 using Pim.Model.Dtos;
+using Pim.Service.IService;
 using Pim.Utility.SqlHelper;
 
 namespace Pim.Service
 {
-    public class ProductCategoryService
+    public class ProductCategoryService : IProductCategoryService
     {
         private readonly IUnitOfWork _uow;
         private readonly ExecuteSp _executeSp;

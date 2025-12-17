@@ -39,20 +39,5 @@ namespace Pim.Data.Repository.User
             return await _context.Users.FirstOrDefaultAsync(x => x.Email == email && x.PhoneNumber == phoneNumber);
         }
 
-        public async Task<bool> CanCreateRole(int creatorRoleId, int newRoleId)
-        {
-            if (creatorRoleId == 1)
-                return true;
-
-            if (creatorRoleId == 2 && newRoleId == 3)
-                return true;
-
-            if (creatorRoleId == 0 && newRoleId == 3)
-                return true;
-
-            return false;
-        }
-
-
     }
 }

@@ -10,7 +10,6 @@ namespace Pim.Data.Repository.User
         Task UpdateRoleMapping(UserRoleMapping request);
         Task<Users> GetUserByEmail(string request);
         Task<Users> GetUserByEmailAndPhone(string email, long phoneNumber);
-        Task<bool> CanCreateRole(int creatorRoleId, int newRoleId);
 
     }
 }

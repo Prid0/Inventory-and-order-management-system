@@ -11,8 +11,8 @@
         public int TotalQuantity { get; set; }
         public double OrderTotalValue { get; set; }
 
-        public string PlacedOn { get; set; }
-        public string? CancledOn { get; set; }
+        public DateTime PlacedOn { get; set; }
+        public DateTime? CancledOn { get; set; }
 
         public List<OrderItemDetailResponse> OrderItems { get; set; }
     }

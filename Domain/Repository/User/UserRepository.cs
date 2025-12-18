@@ -31,7 +31,7 @@ namespace Pim.Data.Repository.User
 
         public async Task<Users> GetUserByEmail(string request)
         {
-            return await _context.Users.FirstOrDefaultAsync(x => x.Email == request);
+            return await _context.Users.FirstOrDefaultAsync(x => x.Email == request && x.IsActive);
 
         }
         public async Task<Users> GetUserByEmailAndPhone(string email, long phoneNumber)

@@ -11,97 +11,78 @@ namespace Pim.Service
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ExecuteSp _executeSp;
-        private readonly CacheService _cacheService;
 
-        public OrderService(IUnitOfWork unitOfWork, ExecuteSp executeSp, CacheService cacheService)
+        public OrderService(IUnitOfWork unitOfWork, ExecuteSp executeSp)
         {
             _unitOfWork = unitOfWork;
             _executeSp = executeSp;
-            _cacheService = cacheService;
         }
 
         public async Task<PagedResult<OrdersResutSet>> GetAllOrders(int from, int to, int userId)
         {
-            string cacheKey = $"order_{from}_{to}";
+            var totalRecord = 0;
+            var fromParameter = DataProvider.GetIntSqlParameter("From", from);
+            var toParameter = DataProvider.GetIntSqlParameter("To", to);
+            var userIdParameter = DataProvider.GetIntSqlParameter("UserId", userId);
+            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
+            var orders = await _executeSp.ExecuteStoredProcedureListAsync<OrdersResutSet>(
+               "GetAllOrders",
+               fromParameter,
+               toParameter,
+               userIdParameter,
+               totalRecordParameter
+           );
 
-            return await _cacheService.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    var totalRecord = 0;
-                    var fromParameter = DataProvider.GetIntSqlParameter("From", from);
-                    var toParameter = DataProvider.GetIntSqlParameter("To", to);
-                    var userIdParameter = DataProvider.GetIntSqlParameter("UserId", userId);
-                    var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
-                    var orders = await _executeSp.ExecuteStoredProcedureListAsync<OrdersResutSet>(
-                       "GetAllOrders",
-                       fromParameter,
-                       toParameter,
-                       userIdParameter,
-                       totalRecordParameter
-                   );
+            totalRecord = Convert.ToInt32(totalRecordParameter.Value);
 
-                    totalRecord = Convert.ToInt32(totalRecordParameter.Value);
+            return new PagedResult<OrdersResutSet>(orders, totalRecord);
 
-                    return new PagedResult<OrdersResutSet>(orders, totalRecord);
-                });
         }
 
 
         public async Task<OrderDetailsResponse> GetOrderDetails(int orderId)
         {
-            string cacheKey = $"order_{orderId}";
+            var orderIdParam = DataProvider.GetIntSqlParameter("OrderId", orderId);
 
-            return await _cacheService.GetOrSetAsync(
-                cacheKey,
-                async () =>
+            var resultSet = await _executeSp
+                .ExecuteStoredProcedureListAsync<OrderDetailsResultSet>(
+                    "GetOrderDetails",
+                    orderIdParam);
+
+            var response = resultSet
+                .GroupBy(x => new
                 {
-                    var orderIdParam = DataProvider.GetIntSqlParameter("OrderId", orderId);
+                    x.UserId,
+                    x.UserName,
+                    x.PhoneNumber,
+                    x.OrderNumber,
+                    x.TotalQuantity,
+                    x.OrderTotalValue,
+                    x.PlacedOn,
+                    x.CancledOn
+                })
+                .Select(g => new OrderDetailsResponse
+                {
+                    UserId = g.Key.UserId,
+                    UserName = g.Key.UserName,
+                    PhoneNumber = g.Key.PhoneNumber,
+                    OrderNumber = g.Key.OrderNumber,
+                    TotalQuantity = g.Key.TotalQuantity,
+                    OrderTotalValue = g.Key.OrderTotalValue,
+                    PlacedOn = g.Key.PlacedOn,
+                    CancledOn = g.Key.CancledOn,
+                    OrderItems = g.Select(item => new OrderItemDetailResponse
+                    {
+                        ProductName = item.ProductName,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.UnitPrice,
+                        LineTotal = item.LineTotal
+                    }).ToList()
+                })
+                .FirstOrDefault();
 
-                    var result = await _executeSp
-                        .ExecuteStoredProcedureListAsync<OrderDetailsResultSet>(
-                            "GetOrderDetails",
-                            orderIdParam);
+            return response;
 
-                    var response = result
-                        .GroupBy(x => new
-                        {
-                            x.UserId,
-                            x.UserName,
-                            x.PhoneNumber,
-                            x.OrderNumber,
-                            x.TotalQuantity,
-                            x.OrderTotalValue,
-                            x.PlacedOn,
-                            x.CancledOn
-                        })
-                        .Select(g => new OrderDetailsResponse
-                        {
-                            UserId = g.Key.UserId,
-                            UserName = g.Key.UserName,
-                            PhoneNumber = g.Key.PhoneNumber,
-                            OrderNumber = g.Key.OrderNumber,
-                            TotalQuantity = g.Key.TotalQuantity,
-                            OrderTotalValue = g.Key.OrderTotalValue,
-                            PlacedOn = g.Key.PlacedOn.ToString("dd-MM-yyyy"),
-                            CancledOn = g.Key.CancledOn.HasValue
-                                ? g.Key.CancledOn.Value.ToString("dd-MM-yyyy")
-                                : string.Empty,
-
-                            OrderItems = g.Select(item => new OrderItemDetailResponse
-                            {
-                                ProductName = item.ProductName,
-                                Quantity = item.Quantity,
-                                UnitPrice = item.UnitPrice,
-                                LineTotal = item.LineTotal
-                            }).ToList()
-                        })
-                        .FirstOrDefault();
-
-                    return response;
-                },
-                expiration: TimeSpan.FromMinutes(5)
-            );
         }
 
 
@@ -112,11 +93,6 @@ namespace Pim.Service
 
             try
             {
-                var validUser = await _unitOfWork.UserRepository.GetById(userId);
-
-                if (validUser == null || !validUser.IsActive)
-                    return "Invalid or inactive user";
-
                 if (request.OrderItem == null || request.OrderItem.Count == 0)
                     return "Order must contain at least one item";
 
@@ -161,7 +137,6 @@ namespace Pim.Service
 
                 await _unitOfWork.Commit();
                 await transaction.CommitAsync();
-                _cacheService.Remove($"order_{request.OrderId}");
                 result = "success";
             }
             catch (Exception ex)
@@ -193,7 +168,6 @@ namespace Pim.Service
 
                 await _unitOfWork.OrderRepository.Update(order);
                 await _unitOfWork.Commit();
-                _cacheService.Remove($"order_{orderId}");
                 result = "success";
             }
             catch (Exception ex)

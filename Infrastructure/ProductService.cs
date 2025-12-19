@@ -58,85 +58,74 @@ namespace Pim.Service
         public async Task<string> AddOrUpdateProduct(int userId, ProductRequest ur)
         {
             var result = "error while adding or updating the user";
-            try
+
+            var isValidCategory = await _unitOfWork.CategoryRepository.isValidCategory(ur.CategoryId);
+            if (!isValidCategory)
             {
-                var isValidCategory = await _unitOfWork.CategoryRepository.isValidCategory(ur.CategoryId);
-                if (!isValidCategory)
-                {
-                    result = "Please enter select Category";
-                    return result;
-                }
-                var existingProduct = await _unitOfWork.ProductRepository.GetProductByNameOrId(ur.ProductId, ur.Name);
-
-                if (existingProduct != null && existingProduct.IsActive && isValidCategory)
-                {
-                    existingProduct.Name = ur.Name;
-                    existingProduct.CategoryId = ur.CategoryId;
-                    existingProduct.Price = ur.Price;
-                    existingProduct.Discription = ur.Discription;
-                    existingProduct.Quantity = ur.Quantity;
-                    existingProduct.ModifiedDate = DateTime.UtcNow;
-                    existingProduct.ModifiedBy = userId;
-
-                    await _unitOfWork.ProductRepository.Update(existingProduct);
-                }
-                else
-                {
-                    var product = new Product
-                    {
-                        Name = ur.Name,
-                        CategoryId = ur.CategoryId,
-                        Price = ur.Price,
-                        Discription = ur.Discription,
-                        Quantity = ur.Quantity,
-                        CreatedDate = DateTime.UtcNow,
-                        ModifiedDate = DateTime.UtcNow,
-                        CreatedBy = userId,
-                        ModifiedBy = userId,
-                        IsActive = true
-                    };
-                    await _unitOfWork.ProductRepository.Add(product);
-                }
-
-                await _unitOfWork.Commit();
-
-                _cacheService.Remove($"products_{ur.ProductId}");
-
-                result = "success";
+                result = "Please enter select Category";
+                return result;
             }
-            catch (Exception ex)
+            var existingProduct = await _unitOfWork.ProductRepository.GetProductByNameOrId(ur.ProductId, ur.Name);
+
+            if (existingProduct != null && existingProduct.IsActive && isValidCategory)
             {
-                result = ex.Message;
+                existingProduct.Name = ur.Name;
+                existingProduct.CategoryId = ur.CategoryId;
+                existingProduct.Price = ur.Price;
+                existingProduct.Discription = ur.Discription;
+                existingProduct.Quantity = ur.Quantity;
+                existingProduct.ModifiedDate = DateTime.UtcNow;
+                existingProduct.ModifiedBy = userId;
+
+                await _unitOfWork.ProductRepository.Update(existingProduct);
             }
+            else
+            {
+                var product = new Product
+                {
+                    Name = ur.Name,
+                    CategoryId = ur.CategoryId,
+                    Price = ur.Price,
+                    Discription = ur.Discription,
+                    Quantity = ur.Quantity,
+                    CreatedDate = DateTime.UtcNow,
+                    ModifiedDate = DateTime.UtcNow,
+                    CreatedBy = userId,
+                    ModifiedBy = userId,
+                    IsActive = true
+                };
+                await _unitOfWork.ProductRepository.Add(product);
+            }
+
+            await _unitOfWork.Commit();
+
+            _cacheService.Remove($"products_{ur.ProductId}");
+
+            result = "success";
             return result;
+
         }
 
         public async Task<string> DeleteProduct(int userId, int id)
         {
             var result = "error";
-            try
+
+            var product = await _unitOfWork.ProductRepository.GetById(id);
+
+            if (product == null || !product.IsActive)
             {
-                var product = await _unitOfWork.ProductRepository.GetById(id);
-
-                if (product == null || !product.IsActive)
-                {
-                    return "product not found or already inactive";
-                }
-
-                product.ModifiedDate = DateTime.UtcNow;
-                product.ModifiedBy = userId;
-                product.IsActive = false;
-                await _unitOfWork.ProductRepository.Update(product);
-                await _unitOfWork.Commit();
-
-                _cacheService.Remove($"products_{id}");
-
-                result = "success";
+                return "product not found or already inactive";
             }
-            catch (Exception ex)
-            {
-                result = ex.Message;
-            }
+
+            product.ModifiedDate = DateTime.UtcNow;
+            product.ModifiedBy = userId;
+            product.IsActive = false;
+            await _unitOfWork.ProductRepository.Update(product);
+            await _unitOfWork.Commit();
+
+            _cacheService.Remove($"products_{id}");
+            result = "success";
+
             return result;
         }
     }

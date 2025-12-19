@@ -106,9 +106,7 @@ namespace Pim.Service
                 await _unitOfWork.OrderRepository.Add(newOrder);
                 await _unitOfWork.Commit();
 
-                var activeProducts = (await _unitOfWork.ProductRepository.GetAll())
-                                        .Where(p => p.IsActive)
-                                        .ToList();
+                var activeProducts = (await _unitOfWork.ProductRepository.GetAll(x => x.IsActive));
 
                 foreach (var item in request.OrderItem)
                 {

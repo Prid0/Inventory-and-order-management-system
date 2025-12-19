@@ -18,7 +18,12 @@ namespace Pim.Service
 
         public async Task<List<RoleResponse>> GetAllRoles()
         {
-            var response = await _executeSp.ExecuteStoredProcedureListAsync<RoleResponse>("GetALLRoles");
+            var resultSet = await _unitOfWork.RoleRepository.GetAll(x => x.IsActive);
+            var response = resultSet.Select(x => new RoleResponse
+            {
+                Id = x.Id,
+                RoleType = x.RoleType
+            }).ToList();
 
             return response;
         }
@@ -33,68 +38,57 @@ namespace Pim.Service
         public async Task<string> AddOrUpdateRole(int userId, RoleRequest role)
         {
             var result = "An error occurred while adding or updating the role.";
-            try
+
+            var existingRole = await _unitOfWork.RoleRepository.GetRoleByNameOrId(role.RoleId, role.RoleType);
+
+            if (existingRole != null)
             {
-                var existingRole = await _unitOfWork.RoleRepository.GetRoleByNameOrId(role.RoleId, role.RoleType);
+                existingRole.RoleType = role.RoleType;
+                existingRole.ModifiedDate = DateTime.UtcNow;
+                existingRole.ModifiedBy = userId;
+                existingRole.IsActive = true;
 
-                if (existingRole != null)
-                {
-                    existingRole.RoleType = role.RoleType;
-                    existingRole.ModifiedDate = DateTime.UtcNow;
-                    existingRole.ModifiedBy = userId;
-                    existingRole.IsActive = true;
-
-                    await _unitOfWork.RoleRepository.Update(existingRole);
-                }
-                else
-                {
-                    var newRole = new Roles
-                    {
-                        RoleType = role.RoleType,
-                        CreatedDate = DateTime.UtcNow,
-                        ModifiedDate = DateTime.UtcNow,
-                        CreatedBy = userId,
-                        ModifiedBy = userId,
-                        IsActive = true
-                    };
-
-                    await _unitOfWork.RoleRepository.Add(newRole);
-                }
-
-                await _unitOfWork.Commit();
-                result = "success";
+                await _unitOfWork.RoleRepository.Update(existingRole);
             }
-            catch (Exception ex)
+            else
             {
-                result = ex.Message;
+                var newRole = new Roles
+                {
+                    RoleType = role.RoleType,
+                    CreatedDate = DateTime.UtcNow,
+                    ModifiedDate = DateTime.UtcNow,
+                    CreatedBy = userId,
+                    ModifiedBy = userId,
+                    IsActive = true
+                };
+
+                await _unitOfWork.RoleRepository.Add(newRole);
             }
+
+            await _unitOfWork.Commit();
+            result = "success";
+
             return result;
         }
 
         public async Task<string> DeleteRole(int userId, int id)
         {
             var result = "Role not found or already inactive.";
-            try
+
+            var role = await _unitOfWork.RoleRepository.GetById(id);
+
+            if (role == null || !role.IsActive)
             {
-                var role = await _unitOfWork.RoleRepository.GetById(id);
-
-                if (role == null || !role.IsActive)
-                {
-                    return result;
-                }
-
-                role.ModifiedDate = DateTime.UtcNow;
-                role.ModifiedBy = userId;
-                role.IsActive = false;
-                await _unitOfWork.RoleRepository.Update(role);
-                await _unitOfWork.Commit();
-
-                result = "success";
+                return result;
             }
-            catch (Exception ex)
-            {
-                result = ex.Message;
-            }
+
+            role.ModifiedDate = DateTime.UtcNow;
+            role.ModifiedBy = userId;
+            role.IsActive = false;
+            await _unitOfWork.RoleRepository.Update(role);
+            await _unitOfWork.Commit();
+
+            result = "success";
             return result;
         }
     }

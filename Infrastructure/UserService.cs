@@ -146,35 +146,28 @@ namespace Pim.Service
         {
             var result = "User not found or already inactive";
             using var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
+
+            var user = await _unitOfWork.UserRepository.GetById(id);
+            var existingUserRole = await _unitOfWork.UserRepository.GetRoleMappingById(user.Id);
+            if ((user == null || !user.IsActive) && !existingUserRole.IsActive)
             {
-                var user = await _unitOfWork.UserRepository.GetById(id);
-                var existingUserRole = await _unitOfWork.UserRepository.GetRoleMappingById(user.Id);
-                if ((user == null || !user.IsActive) && !existingUserRole.IsActive)
-                {
-                    return result;
-                }
-
-                user.IsActive = false;
-                user.ModifiedDate = DateTime.UtcNow;
-                user.ModifiedBy = userId;
-                existingUserRole.IsActive = false;
-                existingUserRole.ModifiedDate = DateTime.UtcNow;
-                existingUserRole.ModifiedBy = userId;
-
-                await _unitOfWork.UserRepository.UpdateRoleMapping(existingUserRole);
-                await _unitOfWork.UserRepository.Update(user);
-                await _unitOfWork.Commit();
-                await transaction.CommitAsync();
-                _cacheService.Remove($"users_{id}");
-                result = "success";
-
+                return result;
             }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return ex.Message;
-            }
+
+            user.IsActive = false;
+            user.ModifiedDate = DateTime.UtcNow;
+            user.ModifiedBy = userId;
+            existingUserRole.IsActive = false;
+            existingUserRole.ModifiedDate = DateTime.UtcNow;
+            existingUserRole.ModifiedBy = userId;
+
+            await _unitOfWork.UserRepository.UpdateRoleMapping(existingUserRole);
+            await _unitOfWork.UserRepository.Update(user);
+            await _unitOfWork.Commit();
+            await transaction.CommitAsync();
+            _cacheService.Remove($"users_{id}");
+            result = "success";
+
             return result;
         }
 
@@ -182,31 +175,24 @@ namespace Pim.Service
         {
             var result = "Invalid email or phone number";
 
-            try
-            {
-                var ExistingUser = await _unitOfWork.UserRepository.GetUserByEmailAndPhone(request.Email, request.PhoneNumber);
+            var ExistingUser = await _unitOfWork.UserRepository.GetUserByEmailAndPhone(request.Email, request.PhoneNumber);
 
-                if (ExistingUser != null)
+            if (ExistingUser != null)
+            {
+                if (!ExistingUser.IsActive)
                 {
-                    if (!ExistingUser.IsActive)
-                    {
-                        result = $"User with email: {request.Email} exists but is inactive";
-                        return result;
-                    }
-
-                    ExistingUser.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-                    ExistingUser.ModifiedDate = DateTime.UtcNow;
-                    ExistingUser.ModifiedBy = ExistingUser.Id;
-
-                    await _unitOfWork.UserRepository.Update(ExistingUser);
-                    await _unitOfWork.Commit();
-                    _cacheService.Remove($"users_{ExistingUser.Id}");
-                    result = "Password reset successful";
+                    result = $"User with email: {request.Email} exists but is inactive";
+                    return result;
                 }
-            }
-            catch (Exception ex)
-            {
-                result = ex.Message;
+
+                ExistingUser.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+                ExistingUser.ModifiedDate = DateTime.UtcNow;
+                ExistingUser.ModifiedBy = ExistingUser.Id;
+
+                await _unitOfWork.UserRepository.Update(ExistingUser);
+                await _unitOfWork.Commit();
+                _cacheService.Remove($"users_{ExistingUser.Id}");
+                result = "Password reset successful";
             }
 
             return result;

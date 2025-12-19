@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Data;
-using System.Data.Common;
+using System.Linq.Expressions;
 
 namespace Pim.Data.Infrastructure
 {
@@ -25,9 +24,11 @@ namespace Pim.Data.Infrastructure
             _dbSet.Remove(obj);
         }
 
-        public async Task<IEnumerable<T>> GetAll()
+        public async Task<List<T>> GetAll(Expression<Func<T, bool>> predicate = null)
         {
-            return await _dbSet.AsNoTracking().ToListAsync();
+            return predicate == null
+                ? await _dbSet.AsNoTracking().ToListAsync()
+                : await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
         }
 
         public async Task<T> GetById(int id)
@@ -41,49 +42,5 @@ namespace Pim.Data.Infrastructure
             _apiContext.Entry(obj).State = EntityState.Modified;
         }
 
-        public string ConstructSQLCommand(string commandText, params object[] parameters)
-        {
-            for (int i = 0; i <= parameters.Length - 1; i++)
-            {
-                var p = parameters[i] as DbParameter;
-                if (p == null)
-                    throw new Exception("Not support parameter type");
-
-                if (p.DbType == DbType.AnsiString || p.DbType == DbType.Int32 ||
-                    p.DbType == DbType.Date || p.DbType == DbType.Decimal)
-                {
-                    if (string.IsNullOrEmpty(Convert.ToString(p.Value)))
-                        p.Value = DBNull.Value;
-                }
-
-                commandText += i == 0 ? " " : ", ";
-                commandText += "@" + p.ParameterName;
-
-                if (p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output)
-                {
-                    commandText += " output";
-
-                    if (p.DbType == DbType.AnsiString)
-                    {
-                        p.Size = 1000;
-                    }
-                }
-            }
-
-            return commandText;
-        }
-
-        public async Task<List<T>> ExecuteStoredProcedureListAsync<T>(string commandText, params object[] parameters)
-            where T : class
-        {
-            if (parameters != null && parameters.Length > 0)
-            {
-                commandText = ConstructSQLCommand(commandText, parameters);
-            }
-
-            var result = await _apiContext.Set<T>().FromSqlRaw(commandText, parameters).ToListAsync();
-
-            return result;
-        }
     }
 }

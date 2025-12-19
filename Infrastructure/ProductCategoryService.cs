@@ -32,72 +32,62 @@ namespace Pim.Service
         public async Task<string> AddOrUpdateCategory(int userId, CategoryRequest ur)
         {
             var result = "error while adding or updating the category";
-            try
+
+            if (string.IsNullOrWhiteSpace(ur.Type))
             {
-                if (string.IsNullOrWhiteSpace(ur.Type))
-                {
-                    result = "category name is required";
-                    return result;
-                }
-
-                var ExistingCategory = await _unitOfWork.CategoryRepository.GetCategoryByNameOrId(ur.CategoryId, ur.Type);
-
-                if (ExistingCategory != null)
-                {
-                    ExistingCategory.Type = ur.Type;
-                    ExistingCategory.ModifiedDate = DateTime.UtcNow;
-                    ExistingCategory.ModifiedBy = userId;
-                    ExistingCategory.IsActive = true;
-                    await _unitOfWork.CategoryRepository.Update(ExistingCategory);
-
-                    result = "category updated successfully";
-                }
-                else
-                {
-                    var category = new ProductCategory
-                    {
-                        Type = ur.Type,
-                        CreatedDate = DateTime.UtcNow,
-                        ModifiedDate = DateTime.UtcNow,
-                        CreatedBy = userId,
-                        ModifiedBy = userId,
-                        IsActive = true
-                    };
-                    await _unitOfWork.CategoryRepository.Add(category);
-                }
-                result = "success";
-                await _unitOfWork.Commit();
+                result = "category name is required";
+                return result;
             }
-            catch (Exception ex)
+
+            var ExistingCategory = await _unitOfWork.CategoryRepository.GetCategoryByNameOrId(ur.CategoryId, ur.Type);
+
+            if (ExistingCategory != null)
             {
-                result = ex.Message;
+                ExistingCategory.Type = ur.Type;
+                ExistingCategory.ModifiedDate = DateTime.UtcNow;
+                ExistingCategory.ModifiedBy = userId;
+                ExistingCategory.IsActive = true;
+                await _unitOfWork.CategoryRepository.Update(ExistingCategory);
+
+                result = "category updated successfully";
             }
+            else
+            {
+                var category = new ProductCategory
+                {
+                    Type = ur.Type,
+                    CreatedDate = DateTime.UtcNow,
+                    ModifiedDate = DateTime.UtcNow,
+                    CreatedBy = userId,
+                    ModifiedBy = userId,
+                    IsActive = true
+                };
+                await _unitOfWork.CategoryRepository.Add(category);
+            }
+            result = "success";
+            await _unitOfWork.Commit();
+
             return result;
         }
 
         public async Task<string> DeleteCategory(int userId, int id)
         {
-            try
+            var result = "Category not found or already inactive";
+            var category = await _unitOfWork.CategoryRepository.GetById(id);
+
+            if (category == null || !category.IsActive)
             {
-                var category = await _unitOfWork.CategoryRepository.GetById(id);
-
-                if (category == null || !category.IsActive)
-                {
-                    return "Category not found or already inactive";
-                }
-
-                category.ModifiedDate = DateTime.UtcNow;
-                category.ModifiedBy = userId;
-                category.IsActive = false;
-                await _unitOfWork.CategoryRepository.Update(category);
-                await _unitOfWork.Commit();
-
+                return result;
             }
-            catch (Exception ex)
-            {
-                return ex.Message;
-            }
-            return "success";
+
+            category.ModifiedDate = DateTime.UtcNow;
+            category.ModifiedBy = userId;
+            category.IsActive = false;
+            await _unitOfWork.CategoryRepository.Update(category);
+            await _unitOfWork.Commit();
+
+            result = "success";
+            return result;
         }
 
     }

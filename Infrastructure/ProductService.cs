@@ -28,14 +28,13 @@ namespace Pim.Service
                 cacheKey,
                 async () =>
                 {
-                    var totalRecord = 0;
                     var fromParameter = DataProvider.GetIntSqlParameter("From", from);
                     var toParameter = DataProvider.GetIntSqlParameter("To", to);
-                    var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
+                    var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", 0, IsOutput: true);
 
                     var response = await _executeSp.ExecuteStoredProcedureListAsync<ProductResponse>("GetAllProducts", fromParameter, toParameter, totalRecordParameter);
 
-                    totalRecord = Convert.ToInt32(totalRecordParameter.Value);
+                    var totalRecord = Convert.ToInt32(totalRecordParameter.Value);
                     return new PagedResult<ProductResponse>(response, totalRecord);
 
                 });

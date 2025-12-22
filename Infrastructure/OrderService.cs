@@ -20,23 +20,19 @@ namespace Pim.Service
 
         public async Task<PagedResult<OrdersResutSet>> GetAllOrders(int from, int to, int userId)
         {
-            var totalRecord = 0;
             var fromParameter = DataProvider.GetIntSqlParameter("From", from);
             var toParameter = DataProvider.GetIntSqlParameter("To", to);
             var userIdParameter = DataProvider.GetIntSqlParameter("UserId", userId);
-            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", totalRecord, true);
+            var totalRecordParameter = DataProvider.GetIntSqlParameter("TotalRecord", 0, IsOutput: true);
             var orders = await _executeSp.ExecuteStoredProcedureListAsync<OrdersResutSet>(
-               "GetAllOrders",
-               fromParameter,
-               toParameter,
-               userIdParameter,
-               totalRecordParameter
-           );
+           "GetAllOrders",
+           fromParameter,
+           toParameter,
+           userIdParameter,
+           totalRecordParameter);
 
-            totalRecord = Convert.ToInt32(totalRecordParameter.Value);
-
+            var totalRecord = Convert.ToInt32(totalRecordParameter.Value);
             return new PagedResult<OrdersResutSet>(orders, totalRecord);
-
         }
 
 

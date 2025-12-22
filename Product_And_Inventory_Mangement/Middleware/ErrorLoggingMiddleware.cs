@@ -22,37 +22,26 @@ public class ErrorLoggingMiddleware
         }
         catch (Exception ex)
         {
+            if (context.Response.HasStarted)
+                throw;
 
             stopwatch.Stop();
+
             using var scope = context.RequestServices.CreateScope();
             var errorLogsService = scope.ServiceProvider
                 .GetRequiredService<IErrorLogsService>();
 
-            if (context.Response.HasStarted)
-                throw;
+            int statusCode = ex switch
+            {
+                ArgumentNullException => StatusCodes.Status400BadRequest,
+                UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+                KeyNotFoundException => StatusCodes.Status404NotFound,
+                _ => StatusCodes.Status500InternalServerError
+            };
 
             context.Response.Clear();
-            context.Response.ContentType = "application/json";
-
-            int statusCode = StatusCodes.Status500InternalServerError;
-
-            switch (ex)
-            {
-                case ArgumentNullException:
-                    statusCode = StatusCodes.Status400BadRequest;
-                    break;
-                case UnauthorizedAccessException:
-                    statusCode = StatusCodes.Status401Unauthorized;
-                    break;
-                case KeyNotFoundException:
-                    statusCode = StatusCodes.Status404NotFound;
-                    break;
-                default:
-                    statusCode = StatusCodes.Status500InternalServerError;
-                    break;
-            }
-
             context.Response.StatusCode = statusCode;
+            context.Response.ContentType = "application/json";
 
             var log = new ErrorLog
             {
@@ -60,8 +49,9 @@ public class ErrorLoggingMiddleware
                 HTTPMethod = context.Request.Method,
                 ResponseStatusCode = statusCode.ToString(),
                 ErrorMessage = ex.Message,
-                StackTrace = ex.StackTrace,
-                ExecutionTime = $"{stopwatch.ElapsedMilliseconds} ms"
+                StackTrace = ex.StackTrace ?? string.Empty,
+                ExecutionTime = $"{stopwatch.ElapsedMilliseconds} ms",
+                CreatedDate = DateTime.UtcNow
             };
 
             await errorLogsService.AddAsync(log);
@@ -73,11 +63,16 @@ public class ErrorLoggingMiddleware
                 status = statusCode
             };
 
-            await context.Response.WriteAsync(JsonSerializer.Serialize(response));
-
-            var json = JsonSerializer.Serialize(response);
+            var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
 
             await context.Response.WriteAsync(json);
+        }
+        finally
+        {
+            stopwatch.Stop();
         }
     }
 }

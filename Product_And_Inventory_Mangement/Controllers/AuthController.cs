@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Pim.Model.Dtos;
-using Pim.Service;
+using Pim.Service.IService;
 
 namespace Pim.Api.Controllers
 {
@@ -8,9 +8,9 @@ namespace Pim.Api.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly AuthService _authService;
+        private readonly IAuthService _authService;
 
-        public AuthController(AuthService authService)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
         }
@@ -23,12 +23,7 @@ namespace Pim.Api.Controllers
             if (!result.Success)
                 return Unauthorized("Invalid email or password");
 
-            return Ok(new
-            {
-                token = result.Token,
-                userId = result.UserId,
-                role = result.Role
-            });
+            return Ok(result);
         }
     }
 }

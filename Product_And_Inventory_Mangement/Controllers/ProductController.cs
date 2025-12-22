@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pim.Model.Dtos;
-using Pim.Service;
+using Pim.Service.IService;
 using Pim.Utility;
 
 namespace Product_And_Inventory_Mangement.Controllers
@@ -10,9 +10,9 @@ namespace Product_And_Inventory_Mangement.Controllers
     [ApiController]
     public class ProductsController : BaseApiController
     {
-        private readonly ProductService _productService;
+        private readonly IProductService _productService;
 
-        public ProductsController(ProductService productService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
+        public ProductsController(IProductService productService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
         {
             _productService = productService;
         }

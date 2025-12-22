@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pim.Model.Dtos;
-using Pim.Service;
+using Pim.Service.IService;
 using Pim.Utility;
 
 namespace Product_And_Inventory_Mangement.Controllers
@@ -10,9 +10,9 @@ namespace Product_And_Inventory_Mangement.Controllers
     [ApiController]
     public class RolesController : BaseApiController
     {
-        private readonly RoleService _roleService;
+        private readonly IRoleService _roleService;
 
-        public RolesController(RoleService roleService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
+        public RolesController(IRoleService roleService, LoggedInUserId loggedInUserId) : base(loggedInUserId)
         {
             _roleService = roleService;
         }

@@ -14,5 +14,11 @@ namespace Product_And_Inventory_Mangement.Controllers
         }
 
         protected int userId => _loggedInUserId.GetUserId();
+
+        protected ServiceResult<T> Result<T>(T data, string message = null)
+        {
+            return ServiceResult<T>.Result(data, message);
+        }
+
     }
 }

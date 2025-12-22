@@ -12,5 +12,6 @@
         public string StackTrace { get; set; }
 
         public string ExecutionTime { get; set; }
+        public DateTime CreatedDate { get; set; }
     }
 }

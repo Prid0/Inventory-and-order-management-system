@@ -17,5 +17,6 @@ namespace Pim.Data
         public DbSet<Order> Order { get; set; }
         public DbSet<OrderItem> OrderItem { get; set; }
         public DbSet<ErrorLog> ErrorLog { get; set; }
+        public DbSet<ApiRequestLog> ApiRequestLog { get; set; }
     }
 }

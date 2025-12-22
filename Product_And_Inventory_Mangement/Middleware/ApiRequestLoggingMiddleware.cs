@@ -19,20 +19,23 @@ namespace Product_And_Inventory_Mangement.Middleware
         {
             var stopwatch = Stopwatch.StartNew();
 
-            await _next(context);
-
-            stopwatch.Stop();
-
-            var log = new ApiRequestLog
+            try
             {
-                RequestPath = context.Request.Path,
-                HttpMethod = context.Request.Method,
-                ResponseStatusCode = context.Response.StatusCode,
-                ElapsedTimeMs = stopwatch.ElapsedMilliseconds,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await apiRequestLogService.AddAsync(log);
+                await _next(context);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                var log = new ApiRequestLog
+                {
+                    RequestPath = context.Request.Path,
+                    HttpMethod = context.Request.Method,
+                    ResponseStatusCode = context.Response.StatusCode,
+                    ElapsedTimeMs = stopwatch.ElapsedMilliseconds,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await apiRequestLogService.AddAsync(log);
+            }
         }
     }
 }
